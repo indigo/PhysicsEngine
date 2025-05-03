@@ -5,9 +5,9 @@ Appliquer des notions de mécanique classique et des méthodes numériques pour 
 
 **Évaluation:**
 
-- **Devoirs (30%):** Implémentations pratiques, analyses de code, résolutions de problèmes.
+- **Devoirs (40%):** Implémentations pratiques, analyses de code, résolutions de problèmes.
 - **Examen de Mi-Session (30%):** Quiz théorique
-- **Examen Final (40%):** Théorie et pratique (implémentation complète d'une mécanique de jeu).
+- **Examen Final (30%):** Théorie et pratique (implémentation complète d'une mécanique de jeu).
 
 ---
 
