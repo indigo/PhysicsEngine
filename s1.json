@@ -1,0 +1,141 @@
+{
+    "session": 1,
+    "title": "Introduction et Mathématiques Essentielles (avec Rapier)",
+    "slides": [
+      {
+        "title": "Bienvenue!",
+        "text": "Ce cours vous plongera dans la physique des jeux vidéo, en utilisant Rapier, un moteur physique performant en Rust, facilement utilisable dans le navigateur. Nous allons explorer les bases de la physique pour créer des expériences de jeu immersives et réalistes.",
+        "illustration": {
+          "type": "image",
+          "description": "Image de fond abstraite avec des formes géométriques en mouvement (cercles, carrés, etc.) et des lignes qui semblent représenter des trajectoires, le tout dans un style 'technologie futuriste'.",
+          "url": "images/intro.png"
+        }
+      },
+      {
+        "title": "Qu'allez-vous apprendre ?",
+        "text": "Ce cours vous permettra de : \n- Comprendre les principes de la physique classique.\n- Appliquer ces principes à la création de jeux vidéo.\n- Utiliser Rapier (dans le navigateur) pour simuler des objets physiques.\n- Développer des compétences en programmation orientées physique.",
+        "illustration": {
+          "type": "diagram",
+          "description": "Une pyramide en étapes.",
+          "url": "url_de_l_image"
+        }
+      },
+      {
+        "title": "Comment se déroulera le cours ?",
+        "text": "10 Sessions, 4 blocs par session.\n\n**Évaluation :**\n- Devoirs (30%) : Implémentations pratiques.\n- Examen de Mi-Session (30%) : Quiz Théorique\n- Examen Final (40%) : Théorie + Application (jeu complet).\n\nAccès aux ressources : (Livre de référence, Documentation Rapier, Forum en ligne).",
+        "illustration": {
+          "type": "diagram",
+          "description": "Un calendrier simple avec les 10 sessions et les évaluations.",
+          "url": "url_de_l_image"
+        }
+      },
+      {
+        "title": "La Physique : Plus que des explosions !",
+        "text": "L'immersion : Le réalisme améliore l'expérience du joueur.\nLe gameplay : Nouvelles mécaniques de jeu, interactions dynamiques.\nExemples : *The Legend of Zelda: Breath of the Wild*, *Portal*, *Angry Birds* (rappeler que ces jeux sont toujours des exemples).",
+        "illustration": {
+          "type": "image",
+          "description": "Images de jeux vidéo avec de la physique (explosions, effets de fumée, etc.) et le logo Rapier.",
+          "url": "url_de_l_image"
+        }
+      },
+      {
+        "title": "Vecteurs : Le GPS des Objets Virtuels",
+        "text": "Les vecteurs : Magnitude (longueur) et direction.\nDécrivent la position, la vitesse, l'accélération, les forces.\nEssentiels pour décrire le mouvement et les interactions.",
+        "illustration": {
+          "type": "diagram",
+          "description": "Un plan 2D avec un point (un objet), une flèche partant de l'origine (0,0) vers ce point (vecteur de position), et une autre flèche représentant le vecteur vitesse.",
+          "url": "url_de_l_image"
+        }
+      },
+      {
+        "title": "Déplacements et Différences",
+        "text": "Addition : $\\vec{a} + \\vec{b}$ (tête-bêche, parallélogramme).\nSoustraction : $\\vec{a} - \\vec{b}$.\nUtilisation : Déplacer un objet, trouver la distance entre deux points.",
+        "illustration": {
+          "type": "diagram",
+        "description": "Deux vecteurs ajoutés ensemble et le résultat. Sur la droite on voit le vecteur de A vers B.",
+        "url": "url_de_l_image"
+      }
+      },
+      {
+        "title": "Changer la Vitesse ou la Force",
+        "text": "$k \\vec{a}$ : Modification de la *magnitude* (longueur) du vecteur.\n$k > 1$ : \"Accélérer\" / Augmenter la force.\n$0 < k < 1$ : \"Ralentir\" / Diminuer la force.\n$k < 0$ : Inverser la direction.",
+        "illustration": {
+          "type": "diagram",
+          "description": "Un vecteur initial, puis le même vecteur multiplié par 2 (plus long) et par -0.5 (plus court, direction opposée).",
+          "url": "url_de_l_image"
+        }
+      },
+      {
+        "title": "Exercices : Mettez-vous en mouvement !",
+        "text": "Exercices : Mettez-vous en mouvement !",
+        "illustration": {
+          "type": "diagram",
+          "description": "Exercices sur le tableau.",
+          "url": "url_de_l_image"
+        }
+      },
+      {
+        "title": "Le secret des angles",
+        "text": "Le produit scalaire :$\\vec{a} \\cdot \\vec{b} =  |\\vec{a}| |\\vec{b}| \\cos\\theta$.  Utilisation : Déterminer l'angle entre des vecteurs, la projection. Si proche de 1 : même direction ; -1 : directions opposées ; 0 : perpendiculaires.",
+        "illustration": {
+          "type": "diagram",
+          "description": "Deux vecteurs avec un angle θ, et la projection d'un vecteur sur l'autre.",
+          "url": "url_de_l_image"
+        }
+      },
+      {
+        "title": "Rotation et Orientation",
+        "text": "En 2D : Calcul du sens d'une rotation (sens horaire ou anti-horaire).  Applications : Utile pour le sens des rotations.",
+        "illustration": {
+          "type": "diagram",
+          "description": "Deux vecteurs dans un plan, et une flèche indiquant le sens de rotation.",
+          "url": "url_de_l_image"
+        }
+      },
+      {
+        "title": "Le Rythme du Mouvement",
+        "text": "Vitesse : Dérivée de la position par rapport au temps ($\\vec{v} = \\frac{d\\vec{x}}{dt}$).  Accélération : Dérivée de la vitesse par rapport au temps ($\\vec{a} = \\frac{d\\vec{v}}{dt}$).",
+        "illustration": {
+          "type": "diagram",
+          "description": "Un objet en mouvement, et une flèche indiquant la vitesse et l'accélération.",
+          "url": "url_de_l_image"
+        }
+      },
+      {
+        "title": "L'Inversion du Temps",
+        "text": "Position : Intégrale de la vitesse.\nVitesse : Intégrale de l'accélération.\nLien avec l'intégration numérique (concept général).",
+        "illustration": {
+          "type": "diagram",
+          "description": "Une courbe représentant la vitesse, et l'aire sous la courbe (représentant le déplacement).",
+          "url": "url_de_l_image"
+        }
+      },
+      {
+        "title": "Bienvenue dans Rapier !",
+        "text": "Présentation de Rapier. Lien vers les ressources et la documentation.",
+        "illustration": {
+          "type": "image",
+          "description": "Capture d'écran du navigateur",
+          "url": "url_de_l_image"
+        }
+      },
+      {
+        "title": "Votre premier objet physique !",
+        "text": "Explication du code 'Hello World' simplifié en Rapier.  Classes clés : *RigidBody*, *Collider*, *PhysicsWorld*.",
+        "illustration": {
+          "type": "diagram",
+          "description": "Un carré simple qui tombe sous la gravité dans un environnement web, avec des lignes indiquant les vecteurs.",
+          "url": "url_de_l_image"
+        }
+      },
+          {
+        "title": "Activité : Bouger un Carré",
+        "text": "Activité : Modifier les valeurs pour faire bouger le carré. Préparer les équations de la session 2, et les faire jouer. Questions et réponses",
+        "illustration": {
+          "type": "diagram",
+          "description": "Le résultat de l'activité",
+          "url": "url_de_l_image"
+        }
+      }
+    ]
+  }
