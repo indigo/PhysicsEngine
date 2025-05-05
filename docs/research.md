@@ -431,4 +431,4 @@ J'ai retiré la colonne vide superflue et m'assuré que le formatage Markdown es
     *   **Documentation et Exemples Box2D :** La documentation de Box2D est essentielle pour comprendre comment effectuer des requêtes de collision. Recherchez les sections et les exemples relatifs à `b2World::QueryAABB()` et `b2World::RayCast()`.
     *   **Tutoriels et Exemples de Jeux Simples avec Box2D :** De nombreux tutoriels en ligne montrent comment créer des jeux simples en utilisant Box2D, ce qui peut donner aux étudiants des idées pour leur examen final et leur fournir des exemples concrets d'utilisation des concepts appris pendant le cours.
 
-J'espère que ces références et ce plan de cours détaillé vous seront utiles pour préparer votre cours sur les moteurs de physique dans le jeu vidéo ! N'hésitez pas si vous avez d'autres questions.
+J'espère que ces références et ce plan de cours détaillé vous seront utiles.
