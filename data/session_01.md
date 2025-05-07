@@ -80,9 +80,21 @@ Changer la Vitesse ou la Force
 Le secret des angles
 
 - Explication du produit scalaire : Formule et explication géométrique (projection).
-  $\vec{a}⋅ \vec{b} =∣a∣.∣b∣.cosθ$
+$\vec{a}⋅ \vec{b} =∣a∣.∣b∣.cos(\theta) $
+
+$\vec{a}⋅ \vec{b} =∣a∣.∣b∣.cos(\theta) $
+
+
+  - Si $\vec{a}⋅ \vec{b} \approx 1 \rarr $ Mêmes directions
+
+  - Si $\vec{a}⋅ \vec{b} \approx -1 \rarr $ Alignés, directions opposée
+
+  - Si $\vec{a}⋅ \vec{b} \approx 0 \rarr $ Perpendiculaires
+
+
+
 - Exemples : Déterminer l'angle entre des vecteurs, l'éclairage (survol).
-- Si proche de 1 : même direction ; -1 : directions opposées ; 0 : perpendiculaires.
+
 
 ![Two vectors with an angle θ and projection](../images/dot.png)
 
