@@ -77,32 +77,29 @@ Changer la Vitesse ou la Force
 
 ---
 
-Le secret des angles
+**Le produit scalaire**
 
 - Explication du produit scalaire : Formule et explication géométrique (projection).
-$\vec{a}⋅ \vec{b} =∣a∣.∣b∣.cos(\theta) $
 
 $\vec{a}⋅ \vec{b} =∣a∣.∣b∣.cos(\theta) $
 
+- Si $\vec{a}⋅ \vec{b} \approx 1 \rarr $ Mêmes directions
 
-  - Si $\vec{a}⋅ \vec{b} \approx 1 \rarr $ Mêmes directions
+- Si $\vec{a}⋅ \vec{b} \approx -1 \rarr $ Alignés, directions opposée
 
-  - Si $\vec{a}⋅ \vec{b} \approx -1 \rarr $ Alignés, directions opposée
-
-  - Si $\vec{a}⋅ \vec{b} \approx 0 \rarr $ Perpendiculaires
-
-
+- Si $\vec{a}⋅ \vec{b} \approx 0 \rarr $ Perpendiculaires
 
 - Exemples : Déterminer l'angle entre des vecteurs, l'éclairage (survol).
-
 
 ![Two vectors with an angle θ and projection](../images/dot.png)
 
 ---
 
-Rotation et Orientation
+Produit Vectoriel
 
-- En 2D : Calcul du sens d'une rotation (sens horaire ou anti-horaire).
+- Donne un vecteur, perpendiculaire au 2 vecteurs.
+- On l'utilise pour récupérer la normale (le vecteur qui sort du plan que forme les 2 vecteurs) au 2 vecteurs.
+
 - Applications : Utile pour le sens des rotations.
 
 ![Two vectors indicating rotation direction](images/cross_product_2d.png)
@@ -120,8 +117,12 @@ Le Rythme du Mouvement
 
 L'Inversion du Temps
 
-- Position : Intégrale de la vitesse.
-- Vitesse : Intégrale de l'accélération.
+- **Position** (en mètre) m: - Intégrale de la vitesse.
+- **Vitesse** : (en mètre par seconde) $m/s$ ou $m.s^{-1}$
+  - Dérivé de la position
+  - Intégrale de l'Accélération.
+- Lien avec l'**Accellération** (en mètre par seconde, par seconde) $m.s^{-2}$
+  - Dérivée de la Vitesse
 - Lien avec l'intégration numérique (concept général).
 
 ![Curve representing velocity and area under the curve](images/integration.png)
