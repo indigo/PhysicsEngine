@@ -24,6 +24,12 @@ Appliquer des notions de mécanique classique et des méthodes numériques pour 
 
 ---
 
+**Pre requis**
+
+- Installation de Visual Studio Code
+- Installation de Live Preview: https://marketplace.visualstudio.com/items/?itemName=ms-vscode.live-server
+- Installation de Markdown Viewer: https://marketplace.visualstudio.com/items/?itemName=bierner.markdown-mermaid
+
 **Déroulement des Sessions (10 Sessions)**
 
 **Session 1: Introduction et Mathématiques Essentielles (4 blocs)**
@@ -31,7 +37,7 @@ Appliquer des notions de mécanique classique et des méthodes numériques pour 
 - Présentation du cours, des objectifs, des attentes et des méthodes d'évaluation.
 - Révision : Vecteurs (opérations, produit scalaire, produit vectoriel).
 - Révision : Dérivées et Intégrales (survol).
-- Activité, introduction à Box2D : Installation, configuration, "Hello World" simple, explication des bases.
+- Activité, introduction à Rapier : Installation, configuration, tester les exemples, explication des bases.
 
 **Session 2: Cinématique 2D et Mouvement de Projectile (4 blocs)**
 
