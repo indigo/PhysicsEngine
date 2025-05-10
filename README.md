@@ -41,7 +41,7 @@ Appliquer des notions de mécanique classique et des méthodes numériques pour 
 
 **Session 2: Cinématique 2D et Mouvement de Projectile (4 blocs)**
 
-- Cinématique 2D : Vitesse, accélération (moyenne et instantanée), position.
+- Cinématique 2D : Vitesse, accélération  et position.
 - Mouvement de projectile (calculs, implémentation dans Box2D).
 - Implémentation des projectiles et explication des lois de Newton.
 - TP1: Création d'un objet en mouvement et d'un projectile simple dans Box2D (avec gravité).
