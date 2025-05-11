@@ -44,13 +44,13 @@ Appliquer des notions de mécanique classique et des méthodes numériques pour 
 - Cinématique 2D : Vitesse, accélération  et position.
 - Mouvement de projectile (calculs, implémentation dans Box2D).
 - Implémentation des projectiles et explication des lois de Newton.
-- TP1: Création d'un objet en mouvement et d'un projectile simple dans Box2D (avec gravité).
+- TP1: Création d'un objet en mouvement et d'un projectile simple dans Rapier (avec gravité).
 
 **Session 3: Forces, Impulsions, Quantité de Mouvement et Corps Rigides Basiques (4 blocs)**
 
 - Forces : Gravité, frottement (conceptuel), forces de ressort (conceptuel).
 - Impulsions et quantité de mouvement : Conservation, calculs.
-- Introduction aux corps rigides dans Box2D.
+- Introduction aux corps rigides dans Rapier.
 - TP2: Création et positionnement de corps rigides et leurs interactions.
 
 **Session 4: Rotation, Équations du Mouvement, et Devoir 1 (4 blocs)**

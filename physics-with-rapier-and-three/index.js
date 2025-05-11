@@ -30,7 +30,7 @@ await RAPIER.init();
 const gravity = { x: 0.0, y: 0, z: 0.0 };
 const world = new RAPIER.World(gravity);
 
-const numBodies = 5;
+const numBodies = 55;
 const bodies = [];
 for (let i = 0; i < numBodies; i++) {
   const body = getBody(RAPIER, world);

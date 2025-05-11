@@ -100,20 +100,13 @@ Produit Vectoriel
 - Donne un vecteur, perpendiculaire au 2 vecteurs.
 - On l'utilise pour récupérer la normale (le vecteur qui sort du plan que forme les 2 vecteurs) au 2 vecteurs.
 
-- Applications : Utile pour le sens des rotations.
+- Applications : Utile pour avoir l'orientation d'une face.
 
 ![Two vectors indicating rotation direction](images/cross_product_2d.png)
 
+$\begin{bmatrix} u_{1} \\ u_{2} \\ u_{3} \end{bmatrix}\times\begin{bmatrix} v_{1} \\ v_{2} \\ v_{3} \end{bmatrix} =(u_2 v_3−u_3v_2)\^{i} −(u_1. v_3 −v_3.v_1)\^{j} +(u_1v_2−u_2.v_1)\^{k}$
 ---
 
-Le Rythme du Mouvement
-
-- Vitesse : Dérivée de la position par rapport au temps ($\vec{v} = \frac{d\vec{x}}{dt}$).
-- Accélération : Dérivée de la vitesse par rapport au temps ($\vec{a} = \frac{d\vec{v}}{dt}$).
-
-![Object in motion with velocity and acceleration vectors](images/velocity_acceleration.png)
-
----
 
 L'Inversion du Temps
 
