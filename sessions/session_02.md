@@ -249,7 +249,3 @@ Cette décomposition détaillée du Bloc 1, avec l'utilisation intensive de form
     *   Annonce du thème de la Session 3 (collisions et forces de contact).
 
 *   **Questions / Réponses et Fin du TP (jusqu'à la fin du temps imparti).**
-
----
-
-Cette structure détaillée pour la Session 2 fournit une progression logique des concepts, allant de la théorie cinématique à l'application pratique avec Rapier, tout en introduisant les fondements des lois de Newton nécessaires pour comprendre la physique des jeux vidéo. L'intégration des formules en LaTeX permet de présenter les concepts mathématiques de manière claire et professionnelle. N'hésitez pas à ajuster le temps alloué à chaque activité en fonction des besoins et du rythme d'apprentissage de vos étudiants.
