@@ -16,7 +16,7 @@ async function init() {
     camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 0.1, 100 );
     camera.position.set( 0, 3, 10 );
 
-    const ambient = new THREE.HemisphereLight( 0x00ffff, 0x00cc00 );
+    const ambient = new THREE.HemisphereLight( 0xffeeee, 0xaaccaa );
 
     scene.add( ambient );
 
@@ -51,7 +51,7 @@ async function init() {
     controls.update();
 
     const geometry = new THREE.BoxGeometry( 10, 0.5, 10 );
-    const material = new THREE.MeshStandardMaterial( { color: 0x552200 } );
+    const material = new THREE.MeshStandardMaterial( { color: 0xaaaaaa } );
 
     const floor = new THREE.Mesh( geometry, material );
     floor.receiveShadow = true;
