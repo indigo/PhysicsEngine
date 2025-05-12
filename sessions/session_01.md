@@ -242,19 +242,3 @@ Nous allons maintenant examiner un exemple de code simplifié utilisant Rapier d
 *   **Structure typique du code (HTML et JavaScript) :** Nous verrons comment initialiser le `PhysicsWorld`, créer un `RigidBody` et un `Collider`, et les ajouter au monde. Nous observerons ensuite comment la simulation met à jour la position de l'objet (par exemple, un carré) sous l'effet de la gravité. (Un extrait de code simplifié sera présenté et expliqué ligne par ligne).
 
 [Physics with Rapier](../physics-with-rapier-and-three/index.html)
-
----
-
-**Activité : Bouger un Carré (Ouverture de la session 2)**
-
-Pour vous préparer à la Session 2, nous allons terminer cette session par une petite activité pratique.
-
-*   **Activité :** Vous allez modifier certaines valeurs dans le code "Hello World" que nous avons examiné (par exemple, la position initiale, la vitesse initiale) pour observer comment cela affecte le mouvement du carré. Vous pourrez également expérimenter en modifiant la gravité (si implémentée dans l'exemple).
-*   **Préparation pour la Session 2 :** Cette activité vous permettra de vous familiariser concrètement avec l'influence des paramètres initiaux sur le mouvement, ce qui est un point central de la cinématique que nous aborderons en détail lors de la prochaine session. Réfléchissez aux équations du mouvement que nous commencerons à explorer et essayez de prédire l'impact de vos modifications.
-*   **Questions et réponses :** Profitez de cette activité pour poser toutes vos questions sur Rapier et les concepts que nous avons couverts aujourd'hui.
-
-[![Result of the activity](images/activity_result.png)](images/activity_result.png)
-
----
-
-Ces modifications incluent des définitions plus précises, l'ajout de formules en $\LaTeX$ pour les concepts mathématiques clés, et une articulation plus claire entre la théorie et son application dans le contexte des jeux vidéo et avec l'utilisation de Rapier. J'espère que cela vous sera utile !
