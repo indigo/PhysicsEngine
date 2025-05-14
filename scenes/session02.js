@@ -124,10 +124,9 @@ function createMotionObjects() {
 createMotionObjects();
 
 function getLinearMotion(t) {
-    const x0 = -3, x1 = 3;
-    const x = x0 + (x1-x0) * (t/duration);
+    const x = 6 * (t/duration);
     const pos = new THREE.Vector3(x, 1, 0);
-    const vel = new THREE.Vector3((x1-x0)/duration, 0, 0);
+    const vel = new THREE.Vector3(6/duration, 0, 0);
     const acc = new THREE.Vector3(0, 0, 0);
     return { pos, vel, acc };
 }
@@ -136,15 +135,18 @@ function getCircularMotion(t) {
     const r = 2;
     const omega = 2 * Math.PI / duration;
     const theta = omega * t;
-    const pos = new THREE.Vector3(r*Math.cos(theta), 2, r*Math.sin(theta));
+    const pos = new THREE.Vector3(r*Math.cos(theta), 1, r*Math.sin(theta));
     const vel = new THREE.Vector3(-r*omega*Math.sin(theta), 0, r*omega*Math.cos(theta));
     const acc = new THREE.Vector3(-r*omega*omega*Math.cos(theta), 0, -r*omega*omega*Math.sin(theta));
     return { pos, vel, acc };
 }
 
 function getBallisticMotion(t) {
+    const pos = new THREE.Vector3(0, 0, 0);
+    const vel = new THREE.Vector3(0, 0, 0);
+    const acc = new THREE.Vector3(0, 0, 0);
 
-    return { pos, vel, acc };
+    return { pos, vel, acc};
 }
 
 function animate() {
