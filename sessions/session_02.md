@@ -47,7 +47,7 @@
 **2. Position en 2D (20 minutes)**
 
 *   **Vecteur Position (10 minutes) :**
-    *   Pour décrire la localisation d'un point (ou d'un objet considéré comme un point) dans un plan bidimensionnel, nous utilisons le **vecteur position**, noté $\vec{r}$ (ou parfois $\vec{s}$ ou $\vec{x}$).
+    *   Pour décrire la localisation d'un point (ou d'un objet considéré comme un point) dans un plan bidimensionnel, nous utilisons le **vecteur position**, noté $\vec{r}$ (ou parfois $\vec{s}$ ou $\vec{p}$).
     *   Si nous définissons un système de coordonnées cartésiennes avec un axe horizontal ($x$) et un axe vertical ($y$), le vecteur position d'un point $P$ de coordonnées $(x, y)$ est donné par :
         $
         \vec{r} = \begin{pmatrix} x \\ y \end{pmatrix} = x \hat{i} + y \hat{j}
@@ -56,6 +56,8 @@
     *   Le vecteur position pointe de l'origine du système de coordonnées vers la position de l'objet.
     *   La **magnitude** du vecteur position, $|\vec{r}| = \sqrt{x^2 + y^2}$, représente la distance de l'objet à l'origine.
     *   La **direction** du vecteur position peut être donnée par l'angle $\theta$ qu'il forme avec l'axe $x$, où $\tan(\theta) = \frac{y}{x}$.
+
+    ![2D plane with position and velocity vectors](../images/vectors.png)
 
 *   **Trajectoire (10 minutes) :**
     *   Si la position d'un objet change au cours du temps, nous pouvons décrire son mouvement en spécifiant son vecteur position en fonction du temps : $\vec{r}(t) = \begin{pmatrix} x(t) \\ y(t) \end{pmatrix}$.
@@ -66,6 +68,8 @@
         *   **Mouvement parabolique (projectile) :** $\vec{r}(t) = \begin{pmatrix} v_{0x} t \\ y_0 + v_{0y} t - \frac{1}{2} g t^2 \end{pmatrix}$ (sous l'effet de la gravité). La trajectoire est une parabole.
     *   Visualisation de différentes trajectoires et des vecteurs position correspondants à différents instants.
 
+*   **Démo cinématique :** Pour visualiser les concepts de cinématique, consultez la démo : [file:../scenes/session02.html](../scenes/session02.html)
+
 ---
 
 **3. Vitesse en 2D (25 minutes)**
@@ -73,28 +77,29 @@
 *   **Vitesse Moyenne (10 minutes) :**
     *   Considérons un objet qui se déplace de la position $\vec{r}_i$ à l'instant $t_i$ à la position $\vec{r}_f$ à l'instant $t_f$.
     *   Le **déplacement** de l'objet pendant cet intervalle de temps $\Delta t = t_f - t_i$ est le vecteur :
-        \[
-        \Delta \vec{r} = \vec{r}_f - \vec{r}_i = \begin{pmatrix} x_f - x_i \\ y_f - y_i \end{pmatrix} = \begin{pmatrix} \Delta x \\ \Delta y \end{pmatrix}
-        \]
+        $\Delta \vec{r} = \vec{r}_f - \vec{r}_i = \begin{pmatrix} x_f - x_i \\ y_f - y_i \end{pmatrix} = \begin{pmatrix} \Delta x \\ \Delta y \end{pmatrix}$
     *   Le **vecteur vitesse moyenne** $\vec{v}_{moy}$ est défini comme le rapport du déplacement au temps écoulé :
-        \[
-        \vec{v}_{moy} = \frac{\Delta \vec{r}}{\Delta t} = \frac{\vec{r}_f - \vec{r}_i}{t_f - t_i} = \begin{pmatrix} \frac{\Delta x}{\Delta t} \\ \frac{\Delta y}{\Delta t} \end{pmatrix} = \begin{pmatrix} v_{moy, x} \\ v_{moy, y} \end{pmatrix}
+        $\vec{v}_{moy} = \frac{\Delta \vec{r}}{\Delta t} = \frac{\vec{r}_f - \vec{r}_i}{t_f - t_i} = \begin{pmatrix} \frac{\Delta x}{\Delta t} \\ \frac{\Delta y}{\Delta t} \end{pmatrix} = \begin{pmatrix} v_{moy, x} \\ v_{moy, y} \end{pmatrix}$
         \]
     *   La vitesse moyenne est un vecteur dont la direction est la même que celle du déplacement, et dont la magnitude est le déplacement total divisé par le temps écoulé.
 
 *   **Vitesse Instantanée (15 minutes) :**
     *   Pour décrire la vitesse de l'objet à un instant précis $t$, nous utilisons la notion de **vitesse instantanée**, $\vec{v}(t)$.
     *   Mathématiquement, la vitesse instantanée est définie comme la limite de la vitesse moyenne lorsque l'intervalle de temps $\Delta t$ tend vers zéro :
-        \[
-        \vec{v}(t) = \lim_{\Delta t \to 0} \frac{\Delta \vec{r}}{\Delta t} = \frac{d\vec{r}}{dt}
-        \]
+
+        $\vec{v}(t) = \lim_{\Delta t \to 0} \frac{\Delta \vec{r}}{\Delta t} = \frac{d\vec{r}}{dt}$
     *   En termes de composantes, la vitesse instantanée est la dérivée des composantes de la position par rapport au temps :
-        \[
-        \vec{v}(t) = \begin{pmatrix} \frac{dx(t)}{dt} \\ \frac{dy(t)}{dt} \end{pmatrix} = \begin{pmatrix} v_x(t) \\ v_y(t) \end{pmatrix}
-        \]
+
+        $\vec{v}(t) = \begin{pmatrix} \frac{dx(t)}{dt} \\ \frac{dy(t)}{dt} \end{pmatrix} = \begin{pmatrix} v_x(t) \\ v_y(t) \end{pmatrix}$
+
         où $v_x(t)$ est la composante de la vitesse selon l'axe $x$, et $v_y(t)$ est la composante de la vitesse selon l'axe $y$ à l'instant $t$.
-    *   La **magnitude** de la vitesse instantanée, $|\vec{v}(t)| = \sqrt{v_x(t)^2 + v_y(t)^2}$, est appelée **vitesse scalaire**.
-    *   La **direction** de la vitesse instantanée est tangente à la trajectoire de l'objet au point considéré. Visualisation de ce concept avec des exemples de trajectoires courbes.
+    *   La **magnitude** de la vitesse instantanée, 
+    
+    $|\vec{v}(t)| = \sqrt{v_x(t)^2 + v_y(t)^2}$, 
+    est appelée **vitesse scalaire**.
+    *   La **direction** de la vitesse instantanée est tangente à la trajectoire de l'objet au point considéré. 
+    
+    Visualisation de ce concept avec des exemples de trajectoires courbes.
 
 ---
 
