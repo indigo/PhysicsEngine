@@ -83,8 +83,8 @@ function onWindowResize( ) {
 
 
 // --- Animation parameters ---
-const duration = 5.0; // seconds for one cycle
-const sphereRadius = 0.15;
+const duration = 3.0; // seconds for one cycle
+const sphereRadius = 0.10;
 const arrowLength = 1.0;
 let spheres, velocityArrows, accelerationArrows;
 let clock = new THREE.Clock();
@@ -142,15 +142,19 @@ function getCircularMotion(t) {
 }
 
 function getBallisticMotion(t) {
-    const pos = new THREE.Vector3(0, 0, 0);
-    const vel = new THREE.Vector3(0, 0, 0);
-    const acc = new THREE.Vector3(0, 0, 0);
-
+    const posx = 0;
+    const posy = 0;
+    const a = -1;
+    const b = 4;
+    const c = 0;
+    const pos = new THREE.Vector3(t+posx, a*t*t + b*t + c, posy);
+    const vel = new THREE.Vector3(1, 2*a*t + b, 0);
+    const acc = new THREE.Vector3(0, 2*a, 0);
     return { pos, vel, acc};
 }
 
 function animate() {
-    const t = clock.getElapsedTime() % duration;
+    const t = clock.getElapsedTime()% duration;
     // Linear motion
     const linear = getLinearMotion(t);
     spheres[0].position.copy(linear.pos);
