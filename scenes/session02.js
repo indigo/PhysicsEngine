@@ -149,6 +149,11 @@ function getBallisticMotion(t) {
     const c = 0;
     const pos = new THREE.Vector3(t+posx, a*t*t + b*t + c, posy);
     const vel = new THREE.Vector3(1, 2*a*t + b, 0);
+    // vitesse initiale en input.
+    // force gravitationnelle
+    // => introduire une masse (constante pour l'instant)
+    // => déduire les changements de position a chaque nouvelle frame
+    // => déduire les changements de vitesse a chaque nouvelle frame
     const acc = new THREE.Vector3(0, 2*a, 0);
     return { pos, vel, acc};
 }
