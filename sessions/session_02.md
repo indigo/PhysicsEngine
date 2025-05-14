@@ -98,6 +98,7 @@
   - La vitesse moyenne est un vecteur dont la direction est la même que celle du déplacement, et dont la magnitude est le déplacement total divisé par le temps écoulé.
 
 - **Vitesse Instantanée (15 minutes) :**
+
   - Pour décrire la vitesse de l'objet à un instant précis $t$, nous utilisons la notion de **vitesse instantanée**, $\vec{v}(t)$.
   - Mathématiquement, la vitesse instantanée est définie comme la limite de la vitesse moyenne lorsque l'intervalle de temps $\Delta t$ tend vers zéro :
 
@@ -106,10 +107,13 @@
     $
 
   - En termes de composantes, la vitesse instantanée est la dérivée des composantes de la position par rapport au temps :
-    \[
+
+    $
     \vec{v}(t) = \begin{pmatrix} \frac{dx(t)}{dt} \\ \frac{dy(t)}{dt} \end{pmatrix} = \begin{pmatrix} v_x(t) \\ v_y(t) \end{pmatrix}
-    \]
+    $
+
     où $v_x(t)$ est la composante de la vitesse selon l'axe $x$, et $v_y(t)$ est la composante de la vitesse selon l'axe $y$ à l'instant $t$.
+
   - La **magnitude** de la vitesse instantanée, $|\vec{v}(t)| = \sqrt{v_x(t)^2 + v_y(t)^2}$, est appelée **vitesse scalaire**.
   - La **direction** de la vitesse instantanée est tangente à la trajectoire de l'objet au point considéré. Visualisation de ce concept avec des exemples de trajectoires courbes.
 
@@ -129,6 +133,7 @@
   - L'accélération moyenne est un vecteur dont la direction est celle du changement de vitesse.
 
 - **Accélération Instantanée (15 minutes) :**
+
   - L'**accélération instantanée** $\vec{a}(t)$ décrit la manière dont la vitesse d'un objet change à un instant précis $t$. Elle est définie comme la dérivée de la vitesse par rapport au temps :
 
     $
