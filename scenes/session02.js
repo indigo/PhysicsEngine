@@ -67,12 +67,9 @@ async function init() {
 
     } );
 
-
-
     onWindowResize();
 
     window.addEventListener( 'resize', onWindowResize, false );
-
 }
 
 function onWindowResize( ) {
@@ -127,7 +124,6 @@ function createMotionObjects() {
 createMotionObjects();
 
 function getLinearMotion(t) {
-    // Moves along x from -3 to +3 at y=1, z=0
     const x0 = -3, x1 = 3;
     const x = x0 + (x1-x0) * (t/duration);
     const pos = new THREE.Vector3(x, 1, 0);
@@ -137,7 +133,6 @@ function getLinearMotion(t) {
 }
 
 function getCircularMotion(t) {
-    // Moves in a circle of radius 2 at y=2, center (0,2,0)
     const r = 2;
     const omega = 2 * Math.PI / duration;
     const theta = omega * t;
@@ -148,20 +143,7 @@ function getCircularMotion(t) {
 }
 
 function getBallisticMotion(t) {
-    // Simulates projectile: starts at (-3,1,3), v0 at 45deg in xz plane, gravity -y
-    const g = 1.5; // gravity
-    const v0 = 1.5; // initial speed
-    const angle = Math.PI/2; // 45 deg
-    const x0 = -4, y0 = 1, z0 = 4;
-    const vx = v0 ;
-    const vz = -v0 ;
-    const vy = 2*v0 ; // upward
-    const x = x0 + vx * t;
-    const z = z0 + vz * t;
-    const y = y0 + vy * t - 0.5 * g * t * t;
-    const pos = new THREE.Vector3(x, y, z);
-    const vel = new THREE.Vector3(vx, vy - g * t, vz);
-    const acc = new THREE.Vector3(0, -g, 0);
+
     return { pos, vel, acc };
 }
 
