@@ -1,4 +1,5 @@
-**Titre de la Session 2 : Cinématique 2D et Mouvement de Projectile**
+**Session 2 : Cinématique 2D et Mouvement de Projectile**
+
 
 **Objectifs de la Session :**
 

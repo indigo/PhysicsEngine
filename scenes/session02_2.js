@@ -47,13 +47,13 @@ async function init() {
     controls.target = new THREE.Vector3( 0, 2, 0 );
     controls.update();
 
-    const geometry = new THREE.BoxGeometry( 10, 0.5, 10 );
+    const geometry = new THREE.BoxGeometry( 10, 0, 10 );
     const material = new THREE.MeshStandardMaterial( { color: 0xaaaaaa } );
 
     const floor = new THREE.Mesh( geometry, material );
     floor.receiveShadow = true;
 
-    floor.position.y = - 0.25;
+    floor.position.y = - 0.00;
 
     scene.add( floor );
 
@@ -83,7 +83,7 @@ function onWindowResize( ) {
 
 
 // --- Animation parameters ---
-const duration = 5.0; // seconds for one cycle
+const duration = 15.0; // seconds for one cycle
 const sphereRadius = 0.15;
 const arrowLength = 1.0;
 let spheres, velocityArrows, accelerationArrows;
@@ -143,28 +143,49 @@ function getCircularMotion(t) {
 
 // --- Ballistic motion state ---
 const startPosition = new THREE.Vector3(-3, 1, -3); // starting position
-const initialVelocity = new THREE.Vector3(1, 8, 1);   // initial velocity (impulses)
+const initialVelocity = new THREE.Vector3(2, 6, 2);   // initial velocity (impulses)
 const gravityVector = new THREE.Vector3(0, -9.8, 0);   // gravity
 let ballisticPosition = startPosition.clone();
 let currentVelocity = initialVelocity.clone();
 let lastBallisticTime = 0;
+let velocityDirection;
+let velocityMagnitude;
 
 function resetBallistic() {
     ballisticPosition.copy(startPosition);
-    currentVelocity.copy(ballisticV0);
+    currentVelocity.copy(initialVelocity);
 }
+
+// Air resistance coefficient (tuned for stable simulation)
+const AIR_RESISTANCE = 0.5; // Adjust this value to control drag strength
 
 function getBallisticMotion(dt) {
     // Update velocity and position using dt
-    dt = dt ;
-    frottement = currentVelocity.clone().multiplyScalar(-0.1);
-    currentVelocity.addScaledVector(frottement + gravityVector, dt);
-    ballisticPosition.addScaledVector(currentVelocity, dt);
+    //dt = 0.9 * dt;
+    
+    velocityMagnitude = currentVelocity.length();
+    
+    //if (velocityMagnitude > 0) {
+        velocityDirection = currentVelocity.clone().normalize();
+        
+        // Calculate drag force (proportional to v² and opposite to velocity)
+        const dragMagnitude = AIR_RESISTANCE * velocityMagnitude * velocityMagnitude;
+        const dragForce = velocityDirection.multiplyScalar(-dragMagnitude);
+        
+        // Apply drag force
+        currentVelocity.addScaledVector(dragForce, dt);
+        // Apply gravity
+        currentVelocity.addScaledVector(gravityVector, dt);
+    
+    // Update position
+        ballisticPosition.addScaledVector(currentVelocity, dt);
+    
     // Handle collisions with the floor
-    if (ballisticPosition.y < 0) {
-        ballisticPosition.y = 0;
+    if (ballisticPosition.y < 0.07) {
+        ballisticPosition.y = 0.07;
         currentVelocity.y = -currentVelocity.y;
     }
+    
     return {
         pos: ballisticPosition.clone(),
         vel: currentVelocity.clone(),
