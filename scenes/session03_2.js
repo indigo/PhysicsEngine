@@ -4,8 +4,6 @@ import { OrbitControls } from 'jsm/controls/OrbitControls.js';
 let camera, scene, renderer;
 let spheres, velocityArrows, accelerationArrows;
 let clock = new THREE.Clock();
-let trailLine, trailPoints = [];
-const MAX_TRAIL_POINTS = 100; // Maximum number of points in the trail
 
 // --- Simulation Parameters Object ---
 const params = {
@@ -108,7 +106,6 @@ function onWindowResize( ) {
 }
 
 function createMotionObjects() {
-    // Clean up existing objects
     if (spheres) {
         for (let i = 0; i < 3; i++) {
             if (spheres[i]) scene.remove(spheres[i]);
@@ -116,65 +113,23 @@ function createMotionObjects() {
             if (accelerationArrows[i]) scene.remove(accelerationArrows[i]);
         }
     }
-    
-    // Clean up trail if it exists
-    if (trailLine) {
-        scene.remove(trailLine);
-        trailLine.geometry.dispose();
-        trailLine.material.dispose();
-    }
-    
-    // Reset arrays
     spheres = [];
     velocityArrows = [];
     accelerationArrows = [];
-    trailPoints = [];
-    
-    // Create trail material and geometry
-    const trailMaterial = new THREE.LineBasicMaterial({ 
-        color: 0x00ffff, 
-        linewidth: 3,
-        transparent: true,
-        opacity: 0.8
-    });
-    const trailGeometry = new THREE.BufferGeometry().setFromPoints(trailPoints);
-    trailLine = new THREE.Line(trailGeometry, trailMaterial);
-    scene.add(trailLine);
-    
-    // Create spheres and arrows
-    const colors = [0xee1111, 0x00aa00, 0x1111ee]; // Red, Green, Blue
+    const colors = [0xee1111, 0x0011ee11, 0x1111ee]; // Red, Green, Blue
     for (let i = 0; i < 3; i++) {
         const geom = new THREE.SphereGeometry(params.sphereRadius, 16, 16);
-        const mat = new THREE.MeshStandardMaterial({ 
-            color: colors[i],
-            metalness: 0.3,
-            roughness: 0.4
-        });
+        const mat = new THREE.MeshStandardMaterial({ color: colors[i] });
         const mesh = new THREE.Mesh(geom, mat);
         mesh.castShadow = true;
-        mesh.receiveShadow = true;
         scene.add(mesh);
         spheres.push(mesh);
 
-        const vArrow = new THREE.ArrowHelper(
-            new THREE.Vector3(1,0,0), 
-            new THREE.Vector3(0,0,0), 
-            params.arrowLength, 
-            0x222222,
-            0.5, // head length
-            0.3  // head width
-        );
+        const vArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), params.arrowLength, 0x222222);
         scene.add(vArrow);
         velocityArrows.push(vArrow);
 
-        const aArrow = new THREE.ArrowHelper(
-            new THREE.Vector3(0,1,0), 
-            new THREE.Vector3(0,0,0), 
-            params.arrowLength, 
-            0x888800,
-            0.5, // head length
-            0.3  // head width
-        );
+        const aArrow = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), params.arrowLength, 0x888800);
         scene.add(aArrow);
         accelerationArrows.push(aArrow);
     }
@@ -187,12 +142,6 @@ function resetBallisticMotion() {
     gravityVector.set(0, params.gravityY, 0);
     windForce.set(params.windForceX, params.windForceY, params.windForceZ);
     lastBallisticTime = clock.getElapsedTime() % params.duration; // Reset time carefully
-    
-    // Clear trail on reset
-    trailPoints.length = 0;
-    if (trailLine) {
-        trailLine.geometry.setFromPoints(trailPoints);
-    }
 }
 
 function getBallisticMotion(dt) {
@@ -241,6 +190,7 @@ function animate() {
     const t = clock.getElapsedTime() % params.duration;
 
     // Reset ballistic state at the start of each cycle or if params.duration changes
+    // A bit tricky to handle duration change perfectly without a full reset button for everything
     if (t < lastBallisticTime) {
         resetBallisticMotion();
     }
@@ -249,20 +199,6 @@ function animate() {
     // Ballistic motion
     const ballistic = getBallisticMotion(dt);
     spheres[2].position.copy(ballistic.pos);
-    
-    // Update trail
-    trailPoints.push(spheres[2].position.clone());
-    
-    // Limit the number of trail points for performance
-    if (trailPoints.length > MAX_TRAIL_POINTS) {
-        trailPoints.shift();
-    }
-    
-    // Update trail geometry
-    if (trailLine && trailPoints.length > 1) {
-        trailLine.geometry.dispose();
-        trailLine.geometry = new THREE.BufferGeometry().setFromPoints(trailPoints);
-    }
     velocityArrows[2].position.copy(ballistic.pos);
     if (ballistic.vel.lengthSq() > 0.001) { // Only set direction if velocity is significant
          velocityArrows[2].setDirection(ballistic.vel.clone().normalize());
