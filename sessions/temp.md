@@ -6,13 +6,13 @@
 *   **Rappel et Connexion :** 
 *   **Les Forces en Physique du Jeu :** 
 *   **Appliquer des Forces *Manuellement* (Simulation Simplifiée) :**
-    *   **Principe :** Si une force constante $\vec{F}$ agit sur un objet de masse $m$ pendant un intervalle de temps $\Delta t_{simu}$ (le "pas de temps" de notre simulation simplifiée) :
+    *   **Principe :** Si une force constante $\vec{F}$ agit sur un objet de masse $m$ pendant un intervalle de temps $\Delta t $ (le "pas de temps" de notre simulation simplifiée) :
         1.  Calculer l'accélération : $\vec{a} = \vec{F} / m$.
-        2.  Mettre à jour la vitesse : $\vec{v}_{nouvelle} = \vec{v}_{ancienne} + \vec{a} \cdot \Delta t_{simu}$.
-        3.  Mettre à jour la position : $\vec{r}_{nouvelle} = \vec{r}_{ancienne} + \vec{v}_{nouvelle} \cdot \Delta t_{simu}$ (ou $\vec{r}_{ancienne} + \vec{v}_{ancienne} \cdot \Delta t_{simu}$ pour une intégration d'Euler simple).
+        2.  Mettre à jour la vitesse : $\vec{v}_{nouvelle} = \vec{v}_{ancienne} + \vec{a} \cdot \Delta t$.
+        3.  Mettre à jour la position : $\vec{r}_{nouvelle} = \vec{r}_{ancienne} + \vec{v}_{nouvelle} \cdot \Delta t$ (ou $\vec{r}_{ancienne} + \vec{v}_{ancienne} \cdot \Delta t$ pour une intégration d'Euler simple).
     *   **Activité Pratique Guidée (Manuelle) :**
         *   Reprendre la simulation de projectile de la session précédente (ou une version simplifiée).
-        *   Modifier le code pour appliquer une force constante supplémentaire (simulant un vent latéral) à chaque "pas de temps" de la simulation.
+        *   Modifier le code pour appliquer une force constante supplémentaire (simulant un vent latéral).
         *   Observer comment la trajectoire du projectile est modifiée par cette force continue.
         *   Discuter des approximations (ex: l'intégration d'Euler et ses limitations si $\Delta t_{simu}$ est grand).
 *   **Questions / Réponses.**
