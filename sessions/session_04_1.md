@@ -188,7 +188,3 @@
     *   En 2D, cela se réduit souvent à une somme algébrique en tenant compte des signes (+ pour antihoraire, - pour horaire).
     *   C'est le $\vec{\tau}_{net}$ qui va déterminer comment l'état de rotation de l'objet va changer (c'est-à-dire son accélération angulaire).
     *   **Condition d'Équilibre de Rotation :** Pour qu'un objet soit en équilibre de rotation (soit il ne tourne pas, soit il tourne à vitesse angulaire constante), le moment de force net agissant sur lui doit être nul : $\vec{\tau}_{net} = 0$.
-
----
-
-J'ai essayé de rendre les explications plus progressives, avec des définitions claires, des analogies, des exemples et des énoncés d'exercices. J'espère que ce format est plus adapté pour vos étudiants !
