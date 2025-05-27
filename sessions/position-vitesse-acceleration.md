@@ -7,7 +7,8 @@ Si entre 2 frames, un point se déplace de 2 vers la droite alors on a:
 ![position](../images/position.png)
 
 
-On est d'accord pour dire que si le point s'est déplacé de 2 vers la droite, alors sa vitesse moyenne est de 2.
+On est d'accord pour dire que si le point s'est déplacé de 2 vers la droite, alors sa vitesse moyenne est de 2. Dans cet exemple, pour simplifier, on dit qu'il y a une seconde entre chaque frame. Pour avoir donc 2m/s.
+
 
 L'unité de vitesse est le mètre par seconde.
 

@@ -58,7 +58,7 @@ Appliquer des notions de mécanique classique et des méthodes numériques pour 
 - Rotation : Vitesse angulaire, accélération angulaire, moment de force.
 - Équations du mouvement pour les corps rigides (avec rotation).
 - TP3: implémentation basique des rotations des corps rigides.
-- Devoir 1: Implémentation d'un mouvement de projectile.
+- Devoir 1: Implémentation d'un mouvement de projectile en 2D.
 
 **Session 5: Collisions, Réponse aux Collisions et Devoir 2 (4 blocs)**
 

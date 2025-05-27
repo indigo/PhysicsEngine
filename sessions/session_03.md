@@ -106,7 +106,3 @@
     *   Récapitulatif des forces, impulsions, et des bases des corps rigides.
     *   Prochain sujet : Comment faire *tourner* nos objets ? Introduction à la rotation et au moment de force.
 *   **Questions / Réponses et Fin du TP.**
-
----
-
-Cette version est plus directe et se concentre sur les informations que les étudiants doivent assimiler et mettre en pratique.
