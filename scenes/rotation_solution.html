@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Three.js Manual Rotation Demo</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <!-- Include dat.GUI library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'jsm/controls/OrbitControls.js';
+
+        let camera, scene, renderer;
+        let rotatingBoard; // Our object that will rotate
+        let clock = new THREE.Clock();
+
+        // --- Simulation Parameters Object ---
+        const params = {
+            // General
+            timeStepFactor: 1.0,
+
+            // Board properties
+            boardWidth: 0.4,
+            boardHeight: 2.0,
+            boardDepth: 0.1,
+            boardMass: 1.0, // kg
+
+            // Rotational physics
+            initialAngleY: 0, // radians
+            initialAngularVelocityY: 0, // rad/s
+            appliedTorqueY: 0.0, // N·m - Torque around Y axis
+            angularDamping: 0.1, // A simple damping factor
+
+            resetSimulation: function() { resetRotationSimulation(); }
+        };
+
+        // --- Rotational motion state (global for reset and updates) ---
+        let currentAngleY = params.initialAngleY;
+        let currentAngularVelocityY = params.initialAngularVelocityY;
+        let momentOfInertiaY; // Will be calculated based on board dimensions and mass
+
+        init();
+        calculateMomentOfInertia(); // Calculate initial moment of inertia
+        setupGUI();
+
+        function calculateMomentOfInertia() {
+            // For a cuboid (planche) rotating around an axis through its center
+            // and perpendicular to the face defined by width (w) and height (h),
+            // I_z = (1/12) * M * (w^2 + h^2)
+            // If rotating around Y, the "face" perpendicular to Y has dimensions width and depth.
+            // So, for rotation around Y axis: I_y = (1/12) * M * (width^2 + depth^2)
+            // (Assuming axis passes through the center of mass)
+            const M = params.boardMass;
+            const w = params.boardWidth;
+            const d = params.boardDepth;
+            // For rotation around the Y axis (vertical axis of the board if it's standing up),
+            // the relevant dimensions for the inertia calculation are width and depth.
+            momentOfInertiaY = (1/12) * M * (w*w + d*d);
+            // If you want to rotate it like a propeller (around its thinnest axis Z, assuming height is along Y)
+            // I_z = (1/12) * M * (w*w + h*h)
+            console.log("Calculated Moment of Inertia (Y):", momentOfInertiaY);
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xbfd1e5);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(1, 2, 3); // Adjusted for better view of a rotating board
+
+            const ambient = new THREE.HemisphereLight(0xffeeee, 0xaaccaa, 1);
+            scene.add(ambient);
+
+            const light = new THREE.DirectionalLight(0xffffff, 2.5);
+            light.position.set(3, 5, 4);
+            light.castShadow = true;
+            light.shadow.radius = 4;
+            light.shadow.blurSamples = 10;
+            light.shadow.mapSize.width = 1024; // Reduced for potentially better performance
+            light.shadow.mapSize.height = 1024;
+            const shadowCamSize = 5;
+            light.shadow.camera.left = -shadowCamSize;
+            light.shadow.camera.bottom = -shadowCamSize;
+            light.shadow.camera.right = shadowCamSize;
+            light.shadow.camera.top = shadowCamSize;
+            scene.add(light);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+            renderer.setAnimationLoop(animate);
+
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.target = new THREE.Vector3(0, params.boardHeight / 2, 0); // Target center of board
+            controls.update();
+
+            const floorGeometry = new THREE.BoxGeometry(10, 0.1, 10);
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.receiveShadow = true;
+            floor.position.y = -0.05;
+            scene.add(floor);
+
+            new THREE.TextureLoader().load('https://threejs.org/examples/textures/grid.png', function (texture) {
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(20, 20);
+                floor.material.map = texture;
+                floor.material.needsUpdate = true;
+            });
+
+            createRotatingObject();
+
+            window.addEventListener('resize', onWindowResize, false);
+            onWindowResize();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createRotatingObject() {
+            if (rotatingBoard) scene.remove(rotatingBoard);
+
+            const boardGeom = new THREE.BoxGeometry(params.boardWidth, params.boardHeight, params.boardDepth);
+            const boardMat = new THREE.MeshStandardMaterial({ color: 0x00cc00 }); // Green board
+            rotatingBoard = new THREE.Mesh(boardGeom, boardMat);
+            rotatingBoard.castShadow = true;
+            rotatingBoard.position.y = params.boardHeight / 2; // Position its base on the origin
+            scene.add(rotatingBoard);
+
+            calculateMomentOfInertia(); // Recalculate if dimensions change
+            resetRotationSimulation(); // Reset physics state
+        }
+
+        function resetRotationSimulation() {
+            currentAngleY = params.initialAngleY;
+            currentAngularVelocityY = params.initialAngularVelocityY;
+            if(rotatingBoard) {
+                rotatingBoard.rotation.y = currentAngleY;
+            }
+        }
+
+        // Voilà la solution
+        function updateRotation(dt) {
+            if (!rotatingBoard || params.mass <= 0.001 || momentOfInertiaY <= 0.00001) {
+                return; // évite une division par zéro, me moment d'inertie est trop petit
+            }
+
+            // 1. Le torque est la force appliquée pour tourner l'objet
+            let netTorqueY = params.appliedTorqueY;
+
+            // Les forces de frottement sont proportionnelles à la vitesse angulaire
+            netTorqueY -= params.angularDamping * currentAngularVelocityY;
+
+            // 2. la formule est alpha = tau_net / I
+            let angularAccelerationY = netTorqueY / momentOfInertiaY;
+
+            // 3. Update Angular Velocity (omega_new = omega_old + alpha * dt)
+            currentAngularVelocityY += angularAccelerationY * dt;
+
+            // 4. Update Angular Position (theta_new = theta_old + omega_new * dt)
+            currentAngleY += currentAngularVelocityY * dt;
+
+            // 5. Apply visual rotation
+            rotatingBoard.rotation.y = currentAngleY;
+        }
+
+        function animate() {
+            let dt = clock.getDelta() * params.timeStepFactor;
+
+            updateRotation(dt); // dt est tout ce dont on a besoin pour mettre à jour la rotation de l'objet
+
+            renderer.render(scene, camera);
+        }
+
+        function setupGUI() {
+            const gui = new dat.GUI();
+
+            const generalFolder = gui.addFolder('General Controls');
+            generalFolder.add(params, 'timeStepFactor', 0.05, 2.0, 0.05).name('Time Speed');
+            generalFolder.open();
+
+            const boardFolder = gui.addFolder('Board Properties');
+            boardFolder.add(params, 'boardWidth', 0.1, 2.0, 0.01).name('Width').onChange(createRotatingObject);
+            boardFolder.add(params, 'boardHeight', 0.5, 3.0, 0.01).name('Height').onChange(createRotatingObject);
+            boardFolder.add(params, 'boardDepth', 0.05, 1.0, 0.01).name('Depth').onChange(createRotatingObject);
+            boardFolder.add(params, 'boardMass', 0.1, 10.0, 0.1).name('Mass (kg)').onChange(calculateMomentOfInertia);
+            boardFolder.open();
+
+            const rotationFolder = gui.addFolder('Rotational Physics');
+            rotationFolder.add(params, 'initialAngleY', -Math.PI, Math.PI, 0.01).name('Start Angle Y (rad)');
+            rotationFolder.add(params, 'initialAngularVelocityY', -10, 10, 0.1).name('Start Ang. Vel. Y (rad/s)');
+            rotationFolder.add(params, 'appliedTorqueY', -2.0, 2.0, 0.01).name('Applied Torque Y (Nm)');
+            rotationFolder.add(params, 'angularDamping', 0, 1.0, 0.005).name('Angular Damping');
+            // Moment of Inertia is calculated, so we might display it but not make it directly editable
+            // Or, allow an override:
+            // rotationFolder.add(params, 'overrideMomentOfInertiaY', 0.01, 5.0, 0.01).name('Override I_y (kg·m²)')
+
+            rotationFolder.add(params, 'resetSimulation').name('Reset Simulation');
+            rotationFolder.open();
+        }
+    </script>
+</body>
+</html>
