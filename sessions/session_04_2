@@ -1,0 +1,280 @@
+
+**Session 4: Dynamique de Rotation - Théorie et Simulation Manuelle**
+
+
+**Bloc 3 : Moment d'Inertie, Équation Fondamentale de la Rotation et Préparation à la Simulation Manuelle (1h30)**
+
+*   **1. Le Concept de Moment d'Inertie ($I$) : La "Masse Rotationnelle" (30 minutes)**
+    *   **Introduction et Analogie :**
+        *   "Lorsqu'une force nette agit sur un objet, sa masse ($m$) détermine à quel point il est difficile de changer sa vitesse linéaire (son accélération). La masse est une mesure de l'**inertie de translation**."
+        *   "De manière similaire, lorsqu'un moment de force net ($\tau_{net}$) agit sur un objet, il existe une propriété qui détermine à quel point il est difficile de changer sa vitesse angulaire (son accélération angulaire). Cette propriété est le **moment d'inertie ($I$)**, parfois appelé 'masse rotationnelle' ou **inertie de rotation**."
+    *   **Dépendance à la Masse et, Crucialement, à sa Distribution :**
+        *   Un objet avec plus de masse aura, en général, un moment d'inertie plus grand.
+        *   Cependant, la **manière dont cette masse est distribuée par rapport à l'axe de rotation est encore plus importante.**
+        *   **Visualisation/Exemple :**
+            *   Imaginez deux barres de même masse totale.
+                *   Barre A : Toute la masse est concentrée très près de l'axe de rotation (comme un petit cylindre dense).
+                *   Barre B : La même masse est répartie sur une plus grande longueur, donc plus éloignée de l'axe.
+            *   Il sera beaucoup plus difficile de faire tourner la Barre B (ou d'arrêter sa rotation) que la Barre A, même si elles ont la même masse. La Barre B a un moment d'inertie plus grand.
+            *   *Autre exemple : Pensez à une patineuse. Lorsqu'elle ramène ses bras près de son corps, elle diminue son moment d'inertie et sa vitesse de rotation augmente (pour conserver son moment cinétique, que nous aborderons). Lorsqu'elle écarte ses bras, son moment d'inertie augmente et elle ralentit.*
+    *   **Unité du Moment d'Inertie :** Kilogramme-mètre carré (kg·m²).
+        *   Cette unité reflète la dépendance à la masse (kg) et à la distance au carré (m²).
+
+![Moment](../images/Moment.png)
+
+
+*   **2. Calcul du Moment d'Inertie (Formules pour Formes Simples et Préparation pour le TP) (30 minutes)**
+    *   **Pour une Particule Ponctuelle :** La définition la plus simple du moment d'inertie est pour une masse ponctuelle $m$ située à une distance perpendiculaire $r$ de l'axe de rotation :
+        $`I = mr^2`$
+        *   Soulignez l'importance du terme $r^2$ : la distance à l'axe a un impact quadratique sur l'inertie de rotation. Une masse deux fois plus éloignée contribue quatre fois plus au moment d'inertie.
+    *   **Pour un Système de Particules Discrètes :** Si un objet est composé de plusieurs masses ponctuelles $m_1, m_2, \dots$ situées respectivement aux distances $r_1, r_2, \dots$ de l'axe de rotation, le moment d'inertie total est la somme des moments d'inertie individuels :
+        $`I = \sum_i m_i r_i^2 = m_1 r_1^2 + m_2 r_2^2 + \dots`$
+    *   **Pour un Corps Rigide Continu :** Pour un objet avec une distribution continue de masse, le calcul implique une intégrale : $`I = \int r^2 dm`$.
+        *   "Cette intégrale signifie que l'on additionne la contribution de chaque petit élément de masse $dm$ multiplié par le carré de sa distance $r$ à l'axe. Pour ce cours, nous n'effectuerons pas ces intégrations, mais nous utiliserons les résultats pour des formes géométriques courantes."
+    *   **Moments d'Inertie pour des Formes Courantes (autour d'axes passant par le centre de masse) :**
+        *   **Tige mince** de longueur $L$, masse $M$ (axe perpendiculaire au centre) : $`I = \frac{1}{12}ML^2`$
+        *   **Disque plein** de rayon $R$, masse $M$ (axe perpendiculaire au centre) : $`I = \frac{1}{2}MR^2`$
+        *   **Sphère pleine** de rayon $R$, masse $M$ (axe passant par le centre) : $`I = \frac{2}{5}MR^2`$
+        *   **Rectangle/Planche (pour le TP) :** Si nous avons une planche rectangulaire de largeur $w$, hauteur $h$ (épaisseur négligeable pour une rotation dans son plan), et masse $M$, tournant autour d'un axe perpendiculaire passant par son centre :
+            *   Si l'axe est perpendiculaire à la face de dimensions $w \times h$ (comme un disque qui tourne) : $`I_{CM} = \frac{1}{12}M(w^2 + h^2)`$.
+            *   **Pour notre TP (rotation 2D d'une "barre" ou "planche" autour de son centre, axe perpendiculaire à la longueur) :** Si nous considérons une barre de longueur $L$ (qui serait $h$ ou $w$ ci-dessus), la formule $`I = \frac{1}{12}ML^2`$ est une bonne approximation si l'autre dimension est petite.
+    *   **Simplification pour le TP :** "Pour notre TP de simulation manuelle, afin de nous concentrer sur la dynamique, nous pourrons :
+        1.  Soit choisir une valeur arbitraire pour $I$ (ex: $I = 1.0 {kg·m²}$) pour voir comment la simulation se comporte.
+        2.  Soit utiliser la formule d'une tige mince ($`I = \frac{1}{12}ML^2`$) si nous simulons une barre/planche qui tourne autour de son centre."
+
+*   **3. Deuxième Loi de Newton pour la Rotation (L'Équation Fondamentale) (15 minutes)**
+    *   Nous avons tous les ingrédients : le moment de force net ($\tau_{net}$) comme cause du changement de rotation, et le moment d'inertie ($I$) comme mesure de la résistance à ce changement.
+    *   **L'Équation Clé :** L'analogue de $`\vec{F}_{net} = m\vec{a}`$ pour la rotation est :
+        $`\vec{\tau}_{net} = I \vec{\alpha}`$
+        Où :
+        *   $\vec{\tau}_{net}$ est le moment de force net agissant sur l'objet (en N·m).
+        *   $I$ est le moment d'inertie de l'objet par rapport à l'axe de rotation (en kg·m²).
+        *   $\vec{\alpha}$ est l'accélération angulaire résultante (en rad/s²).
+    *   **Signification et Utilisation :**
+        *   Cette équation nous dit que si nous connaissons le moment de force net appliqué à un objet et son moment d'inertie, nous pouvons calculer son accélération angulaire : $`\alpha = \frac{\tau_{net}}{I}`$.
+        *   Une fois que nous avons $\alpha$, nous pouvons utiliser les principes de la cinématique angulaire (et de l'intégration numérique) pour déterminer comment la vitesse angulaire $\omega$ et la position angulaire $\theta$ de l'objet vont évoluer dans le temps.
+
+*   **4. Préparation à la Simulation Manuelle de Rotation (Application des Équations) (15 minutes)**
+    *   **Objectif de la Simulation du TP3 :** Voir comment un objet se met à tourner (ou change sa rotation) lorsqu'un moment de force constant lui est appliqué. Nous allons le faire "manuellement" en programmant les équations nous-mêmes, pas à pas, en utilisant une boucle de simulation discrète.
+
+Vous avez tout à fait raison de soulever ce point ! L'utilisation excessive des backticks (`) autour des équations MathTeX est une mauvaise habitude de ma part lorsque je génère du Markdown, et ce n'est **pas nécessaire ni correct** pour le rendu MathTeX standard.
+
+Les délimiteurs standard pour MathTeX en Markdown sont :
+
+*   **Pour les mathématiques en ligne (inline) :** `$ ... $`
+    *   Exemple : La vitesse est $v = dx/dt$.
+*   **Pour les mathématiques en bloc (display/block) :** `$$ ... $$`
+    *   Exemple :
+        $$
+        E = mc^2
+        $$
+
+L'utilisation des backticks simples (`) est pour délimiter du `code en ligne`, et les triples backticks (```) pour des blocs de code. Mélanger cela avec la syntaxe MathTeX peut parfois fonctionner par accident dans certains parseurs Markdown très permissifs, mais ce n'est pas la bonne pratique et peut entraîner des problèmes de rendu ou des rendus incorrects.
+
+**Je vais corriger la section précédente en enlevant les backticks superflus autour des expressions MathTeX et en utilisant les délimiteurs `$` et `$$` appropriés.**
+
+Merci de m'avoir signalé cette erreur ! C'est important pour la clarté et la correction du document.
+
+---
+
+**Version Corrigée (sans backticks superflus autour de MathTeX) :**
+
+**4. Préparation à la Simulation Manuelle de Rotation (Application des Équations)**
+
+**(15 minutes)**
+
+L'objectif de notre prochain Travail Pratique (TP3) sera de voir concrètement comment un objet se met à tourner, ou comment sa rotation change, lorsqu'un moment de force constant lui est appliqué. Nous allons réaliser cela "manuellement", c'est-à-dire en programmant nous-mêmes les équations fondamentales, pas à pas, en utilisant une **boucle de simulation discrète**.
+
+Voici le déroulement de cette boucle pour la rotation (nous considérerons une rotation autour d'un axe fixe, par exemple une rotation en 2D) :
+
+*   **À chaque instant $t_n$, nous connaissons l'état de notre objet :**
+    *   **Position Angulaire :** $\theta_n$ (Où en est sa rotation ?)
+    *   **Vitesse Angulaire :** $\omega_n$ (À quelle vitesse tourne-t-il ?)
+
+*   **Propriétés de l'Objet et de la Simulation (que nous fixons ou connaissons) :**
+    *   **Moment d'Inertie :** $I$ (Sa "résistance" à la rotation, en kg·m²)
+    *   **Pas de Temps :** $\Delta t$ (La petite durée de chaque étape de notre simulation, en secondes)
+
+*   **Ce que nous allons appliquer ou calculer à chaque étape :**
+    *   **Moment de Force Net Appliqué :** $\tau_{net, n}$ (L'effort de rotation que nous appliquons, en N·m). Pour notre TP, nous pourrions le fixer à une valeur constante, que nous appellerons $\tau_{app}$.
+    *   **Accélération Angulaire :** $\alpha_n$ (Comment sa vitesse de rotation va changer, en rad/s²)
+
+---
+**Les Étapes de Calcul à chaque pas de temps $\Delta t$ (Méthode d'Euler Semi-Implicite)**
+---
+
+1.  **Calculer l'Accélération Angulaire ($\alpha_n$) :**
+    *   Nous utilisons l'équation fondamentale de la dynamique de rotation, qui est l'équivalent de $F=ma$ pour la rotation : $\tau_{net} = I \alpha$.
+    *   En isolant l'accélération angulaire, nous obtenons :
+        > $$ \alpha_n = \frac{\tau_{net, n}}{I} $$
+    *   ***Pour votre code :***
+        *   Si vous avez une variable, disons `moment_force_applique` (représentant $\tau_{net, n}$) et `moment_inertie` (représentant $I$), alors :
+        *   `acceleration_angulaire = moment_force_applique / moment_inertie;`
+    *   *Remarque : Si le $\tau_{net, n}$ et $I$ sont constants, alors $\alpha_n$ sera également constant pendant ce pas de temps et les suivants (tant que le moment de force appliqué ne change pas).*
+
+2.  **Mettre à jour la Vitesse Angulaire ($\omega_{n+1}$) :**
+    *   La nouvelle vitesse angulaire ($\omega_{n+1}$) est égale à la vitesse angulaire actuelle ($\omega_n$) plus le changement de vitesse accumulé pendant l'intervalle $\Delta t$ dû à l'accélération angulaire $\alpha_n$.
+    *   Formule :
+        > $$ \omega_{n+1} = \omega_n + \alpha_n \cdot \Delta t $$
+    *   ***Pour votre code :***
+        *   Si `vitesse_angulaire_actuelle` stocke $\omega_n$, `acceleration_angulaire` stocke $\alpha_n$, et `pas_de_temps` stocke $\Delta t$ :
+        *   `vitesse_angulaire_nouvelle = vitesse_angulaire_actuelle + acceleration_angulaire * pas_de_temps;`
+
+3.  **Mettre à jour la Position Angulaire ($\theta_{n+1}$) :**
+    *   Le nouvel angle ($\theta_{n+1}$) est égal à l'angle actuel ($\theta_n$) plus le déplacement angulaire effectué pendant $\Delta t$.
+    *   Pour la **méthode d'Euler semi-implicite** (que nous privilégions car elle est souvent plus stable pour les simulations physiques), nous utilisons la *nouvelle* vitesse angulaire ($\omega_{n+1}$) que nous venons de calculer à l'étape précédente pour déterminer ce déplacement.
+    *   Formule :
+        > $$ \theta_{n+1} = \theta_n + \omega_{n+1} \cdot \Delta t $$
+    *   ***Pour votre code :***
+        *   Si `angle_actuel` stocke $\theta_n$, `vitesse_angulaire_nouvelle` stocke $\omega_{n+1}$, et `pas_de_temps` stocke $\Delta t$ :
+        *   `angle_nouveau = angle_actuel + vitesse_angulaire_nouvelle * pas_de_temps;`
+    *   *(Note sur les méthodes d'intégration : Si nous avions utilisé $\omega_n$ (la vitesse *avant* sa mise à jour) pour calculer la nouvelle position, cela aurait été la méthode d'Euler explicite. L'Euler semi-implicite est généralement un meilleur choix pour commencer).*
+
+4.  **Mettre à jour l'Affichage Visuel :**
+    *   Utilisez la nouvelle position angulaire $\theta_{n+1}$ (votre variable `angle_nouveau`) pour mettre à jour l'orientation de votre objet dans l'environnement graphique.
+    *   *Par exemple, dans Three.js, si la rotation se fait autour de l'axe Y : `objetMesh.rotation.y = angle_nouveau;`*
+
+5.  **Préparer le Prochain Pas de Temps :**
+    *   Pour la prochaine itération de votre boucle de simulation, les valeurs "nouvelles" que vous venez de calculer deviennent les valeurs "actuelles" :
+        *   `angle_actuel` (pour le prochain pas) $\leftarrow$ `angle_nouveau` (valeur de $\theta_{n+1}$)
+        *   `vitesse_angulaire_actuelle` (pour le prochain pas) $\leftarrow$ `vitesse_angulaire_nouvelle` (valeur de $\omega_{n+1}$)
+
+---
+
+Cette version devrait être beaucoup plus propre et correcte pour le rendu MathTeX. Encore merci pour votre vigilance !
+
+
+
+    *   **La Boucle de Simulation Discrète pour la Rotation (pour un axe fixe, ex: rotation 2D) :**
+        *   **Ce que nous devons suivre à chaque instant (état de l'objet) :**
+            *   `angle_actuel` ($\theta_n$) : Sa position angulaire.
+            *   `vitesse_angulaire_actuelle` ($\omega_n$) : Sa vitesse de rotation.
+        *   **Ce que nous connaissons ou fixons pour l'objet/simulation :**
+            *   `moment_inertie_I` : La "résistance à la rotation" de notre objet.
+            *   `pas_de_temps_dt` ($\Delta t$) : La petite durée de chaque étape de notre simulation.
+        *   **Ce que nous allons appliquer ou calculer :**
+            *   `moment_force_applique_tau` ($\tau_{net, n}$) : Le moment de force que nous décidons d'appliquer (pour l'instant, nous le supposerons constant).
+            *   `acceleration_angulaire_alpha` ($\alpha_n$) : Résultera du torque et de l'inertie.
+    *   **Les Étapes de Calcul à chaque `dt` (Méthode d'Euler Semi-Implicite) :**
+        1.  **Calculer l'Accélération Angulaire ($\alpha_n$) :**
+
+
+            *   À partir de l'équation fondamentale : $`\alpha_n = \frac{moment_force_applique_tau}{moment_inertie_I}`$.
+            *   Si `moment_force_applique_tau` est constant et `moment_inertie_I` est constant, alors $\alpha_n$ sera aussi constant pendant ce pas de temps (et les suivants tant que $\tau$ ne change pas).
+        2.  **Mettre à jour la Vitesse Angulaire ($\omega_{n+1}$) :**
+            *   La nouvelle vitesse angulaire est l'ancienne plus le changement dû à l'accélération pendant $\Delta t$.
+            *   $`\text{vitesse_angulaire_nouvelle} (\omega_{n+1}) = \text{vitesse_angulaire_actuelle} (\omega_n) + \text{acceleration_angulaire_alpha} (\alpha_n) \cdot \text{pas_de_temps_dt} (\Delta t)`$.
+        3.  **Mettre à jour la Position Angulaire ($\theta_{n+1}$) :**
+            *   Le nouvel angle est l'ancien plus le déplacement angulaire effectué pendant $\Delta t$ à la *nouvelle* vitesse angulaire.
+            *   $`\text{angle_nouveau} (\theta_{n+1}) = \text{angle_actuel} (\theta_n) + \text{vitesse_angulaire_nouvelle} (\omega_{n+1}) \cdot \text{pas_de_temps_dt} (\Delta t)`$.
+            *   *(Note : Utiliser $\omega_{n+1}$ ici est la caractéristique de l'Euler semi-implicite. Si on utilisait $\omega_n$, ce serait Euler explicite).*
+        4.  **Mettre à jour l'affichage :** Utiliser `angle_nouveau` pour faire tourner l'objet visuel dans Three.js.
+        5.  **Préparer le pas suivant :** `angle_actuel` devient `angle_nouveau`, `vitesse_angulaire_actuelle` devient `vitesse_angulaire_nouvelle`.
+    *   "C'est exactement cette séquence que vous allez implémenter dans le TP3 pour simuler la rotation !"
+
+---
+
+**Bloc 4 : TP3 - Simulation Manuelle de Rotation et Présentation du Devoir 1 (1h30)**
+
+*   **1. TP3 : Implémentation Manuelle d'une Rotation de Base (avec Three.js) (70 minutes)**
+    *   **Objectif Principal du TP :**
+        *   Mettre en œuvre la boucle de simulation discrète (expliquée au Bloc 3) pour la rotation d'un objet 2D simple (ou un objet 3D tournant autour d'un seul axe principal, comme l'axe Y).
+        *   Appliquer un moment de force (torque) constant et observer comment cela affecte l'accélération angulaire, la vitesse angulaire, et la position angulaire de l'objet au fil du temps.
+        *   Visualiser la rotation de l'objet en utilisant Three.js.
+    *   **Mise en Place de l'Environnement (Suggestion) :**
+        *   Vous pouvez repartir de votre code Three.js existant (celui avec la sphère balistique et `dat.GUI`), mais en simplifiant :
+            *   Commentez ou supprimez la logique du mouvement balistique pour vous concentrer sur un nouvel objet rotatif.
+            *   Gardez la scène Three.js de base (caméra, lumière, renderer, sol).
+    *   **Instructions Détaillées pour l'Implémentation :**
+        1.  **Créer l'Objet Visuel Rotatif dans Three.js :**
+            *   Créez un `THREE.Mesh` simple. Une "planche" ou une "barre" est idéale car sa rotation est facile à voir.
+                *   `const boardGeometry = new THREE.BoxGeometry(0.2, 2.0, 0.05); // w, h, d - une planche fine et longue`
+                *   `const boardMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Vert`
+                *   `const rotatingBoard = new THREE.Mesh(boardGeometry, boardMaterial);`
+                *   `scene.add(rotatingBoard);`
+                *   Positionnez-la initialement (ex: `rotatingBoard.position.y = 1.0;`).
+        2.  **Définir les Variables Physiques pour la Rotation (au niveau global ou dans un objet de simulation) :**
+            ```javascript
+            let currentAngle = 0; // Theta (radians)
+            let angularVelocity = 0; // Omega (rad/s)
+            const momentOfInertia = 1.0; // I (kg·m²), choisissez une valeur simple pour commencer
+                                        // ou calculez-la si vous simulez une barre : (1/12)*mass*length^2
+                                        // Si mass = 1kg, length = 2m, I = (1/12)*1*(2^2) = 4/12 = 1/3 kg·m^2
+
+            // Paramètres contrôlables via dat.GUI (à ajouter dans params et setupGUI)
+            // params.appliedTorque = 0.5; // N·m (exemple, pour rotation autour de Y)
+            // params.angularDamping = 0.01; // Facteur pour simuler un léger frottement rotationnel (optionnel)
+            ```
+        3.  **Implémenter la Boucle de Simulation de Rotation dans `animate()` :**
+            ```javascript
+            function animate() {
+                let dt = clock.getDelta() * params.timeStepFactor; // Utilisez votre dt existant
+
+                // --- Logique de Rotation Manuelle ---
+                if (params.mass > 0.001 && momentOfInertia > 0.001) { // Éviter division par zéro
+                    // 1. Pour l'instant, supposons un torque net constant venant de params.appliedTorque
+                    //    (Si la rotation est autour de Y, ce torque est autour de Y)
+                    let netTorque = params.appliedTorqueY || 0; // Assurez-vous d'avoir params.appliedTorqueY dans dat.GUI
+
+                    // 2. Calculer l'Accélération Angulaire (alpha = tau_net / I)
+                    let angularAcceleration = netTorque / momentOfInertia;
+
+                    // (Optionnel) Ajouter un léger "damping" (frottement angulaire) qui s'oppose à la rotation
+                    // angularAcceleration -= params.angularDamping * angularVelocity; // Torque de damping = -k_damp * omega
+
+                    // 3. Mettre à jour la Vitesse Angulaire (omega_new = omega_old + alpha * dt)
+                    angularVelocity += angularAcceleration * dt;
+
+                    // 4. Mettre à jour la Position Angulaire (theta_new = theta_old + omega_new * dt)
+                    currentAngle += angularVelocity * dt;
+                }
+                // --- Fin Logique de Rotation ---
+
+                // 5. Appliquer la Rotation à l'Objet Three.js
+                if (rotatingBoard) {
+                    rotatingBoard.rotation.y = currentAngle; // Si la rotation est autour de l'axe Y
+                    // Pour rotation autour de X: rotatingBoard.rotation.x = currentAngle;
+                    // Pour rotation autour de Z: rotatingBoard.rotation.z = currentAngle;
+                }
+
+                // ... (votre code existant pour le rendu) ...
+                renderer.render(scene, camera);
+            }
+            ```
+        4.  **Ajouter des Contrôles `dat.GUI` :**
+            *   Ajoutez `appliedTorqueY` (ou `appliedTorqueX`, `appliedTorqueZ` si vous voulez explorer d'autres axes) à votre objet `params` et à `setupGUI()`.
+            *   (Optionnel) Ajoutez `angularDamping` et `momentOfInertia` (si vous ne le calculez pas dynamiquement) au GUI pour expérimenter.
+        5.  **Expérimenter et Observer :**
+            *   Appliquez un `appliedTorqueY` positif. L'objet doit se mettre à tourner de plus en plus vite dans le sens antihoraire autour de l'axe Y.
+            *   Mettez `appliedTorqueY` à zéro. Que fait l'objet ? (Il devrait continuer à tourner à la vitesse angulaire qu'il avait atteinte, si pas de damping).
+            *   Appliquez un `appliedTorqueY` négatif. L'objet doit ralentir, s'arrêter, puis tourner dans l'autre sens.
+            *   Modifiez `momentOfInertia` (si vous l'avez mis dans le GUI). Un $I$ plus grand rend-il l'accélération angulaire plus lente pour le même torque ?
+            *   Si vous avez implémenté le `angularDamping`, observez comment l'objet ralentit et s'arrête éventuellement si aucun torque n'est appliqué.
+    *   **Points Importants pour le TP :**
+        *   Commencez simple : une seule rotation autour d'un axe principal (Y est souvent le plus facile à visualiser au début).
+        *   Utilisez `console.log` pour afficher les valeurs de `currentAngle`, `angularVelocity`, `angularAcceleration` afin de déboguer et de comprendre ce qui se passe.
+        *   L'objectif est de voir la **chaîne de causalité** en action : un torque appliqué $\rightarrow$ une accélération angulaire $\rightarrow$ un changement de vitesse angulaire $\rightarrow$ un changement de position angulaire.
+*   **2. Présentation et Clarifications du Devoir 1 (Mouvement de Projectile - Implémentation Manuelle) (20 minutes) :**
+    *   **Rappel des Objectifs du Devoir :** Mettre en œuvre une simulation *manuelle* du mouvement d'un projectile en 2D, en appliquant les lois de Newton et l'intégration numérique (Euler semi-implicite recommandé).
+    *   **Consignes Clés à Souligner :**
+        1.  **Calcul des Forces :** Identifier les forces agissant sur le projectile (gravité, et optionnellement résistance de l'air). Calculer la force nette $\vec{F}_{net}$.
+        2.  **Calcul de l'Accélération :** Utiliser $\vec{a} = \vec{F}_{net} / m$.
+        3.  **Intégration Numérique (Boucle de Simulation) :**
+            *   À chaque pas de temps $\Delta t$ :
+                *   Mettre à jour la vitesse : $\vec{v}_{n+1} = \vec{v}_n + \vec{a}_n \cdot \Delta t$.
+                *   Mettre à jour la position : $\vec{r}_{n+1} = \vec{r}_n + \vec{v}_{n+1} \cdot \Delta t$.
+        4.  **Paramètres de Lancement :** L'utilisateur doit pouvoir spécifier la vitesse initiale et l'angle de lancement.
+        5.  **Visualisation :** Afficher la trajectoire du projectile.
+        6.  **(Optionnel/Bonus) :** Rebond sur le sol, résistance de l'air plus réaliste (proportionnelle à $v$ ou $v^2$).
+    *   **Lien avec le Code Three.js Fourni :**
+        *   "La fonction `getBallisticMotion` dans le code Three.js que nous avons analysé est une excellente référence pour voir comment implémenter cette boucle d'intégration manuelle pour la translation. Votre devoir sera similaire, mais vous le construirez vous-même, en expliquant chaque étape."
+    *   **Critères d'Évaluation :** Correction de l'application des principes physiques, clarté et organisation du code, fonctionnalité de la simulation, et respect des consignes.
+    *   **Questions / Réponses :** Laisser du temps pour toutes les questions concernant le devoir.
+    *   **Rappel de la Date de Remise.**
+*   **Conclusion de la Session et Annonce de la Session 5 :**
+    *   "Aujourd'hui, nous avons exploré en détail la dynamique de rotation et même simulé manuellement une rotation simple. Vous avez maintenant les bases pour le Devoir 1 sur le mouvement de projectile."
+    *   "Dans la Session 5, nous allons réellement commencer à utiliser **Rapier** de manière plus approfondie pour gérer des corps rigides plus complexes, leurs rotations, et surtout, nous allons aborder un sujet crucial dans les jeux : la **détection et la réponse aux collisions**."
+
+---
+
+Cette version détaillée des Blocs 3 et 4 devrait fournir une feuille de route claire pour vous et vos étudiants, en mettant l'accent sur la compréhension des équations et leur application pratique dans une simulation manuelle avant de s'appuyer sur un moteur physique complet. Le TP3 sera un excellent exercice pour concrétiser la théorie de la rotation.

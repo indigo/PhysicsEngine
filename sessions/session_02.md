@@ -5,7 +5,7 @@
 
 - Comprendre et appliquer les concepts de vitesse, d'accélération et de position en deux dimensions.
 - Analyser et calculer la trajectoire d'un projectile soumis à la gravité.
-- Implémenter le mouvement de projectiles dans l'environnement Rapier.
+- Implémenter le mouvement de projectiles dans l'environnement Three.js.
 - Introduire les lois de Newton et leur pertinence pour la simulation de mouvement.
 - Réaliser un premier travail pratique de création d'objets en mouvement et de projectiles simples avec Rapier.
 
@@ -39,11 +39,10 @@
   - Contrairement à la dynamique, qui relie le mouvement aux forces.
   - Notre objectif dans ce bloc est de développer les outils mathématiques pour décrire précisément _comment_ les objets se déplacent en 2D.
 
-- **Annonce des objectifs du Bloc 1 (5 minutes) :**
-  - À la fin de ce bloc, vous serez capable de :
-    - Exprimer la position, la vitesse et l'accélération d'un objet en 2D sous forme vectorielle.
-    - Comprendre la relation mathématique entre la position, la vitesse et l'accélération.
-    - Interpréter physiquement les composantes de ces vecteurs.
+- **Présentation des objectifs du Bloc 1 (5 minutes) :**
+  - Exprimer la position, la vitesse et l'accélération d'un objet en 2D sous forme vectorielle.
+  - Comprendre la relation mathématique entre la position, la vitesse et l'accélération.
+  - Interpréter physiquement les composantes de ces vecteurs.
 
 ---
 
@@ -79,11 +78,9 @@
 
 **3. Vitesse en 2D (25 minutes)**
 
-    Visualisation de ce concept avec des exemples de trajectoires courbes.
-
-=======
 
 - **Vitesse Moyenne (10 minutes) :**
+    ![2D plane with position and velocity vectors](../images/position02.png)
 
   - Considérons un objet qui se déplace de la position $\vec{r}_i$ à l'instant $t_i$ à la position $\vec{r}_f$ à l'instant $t_f$.
   - Le **déplacement** de l'objet pendant cet intervalle de temps $\Delta t = t_f - t_i$ est le vecteur :

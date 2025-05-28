@@ -14,6 +14,9 @@
         *   Lors d'un mouvement de **rotation pure autour d'un axe fixe**, les différents points de l'objet décrivent des trajectoires circulaires centrées sur cet axe. Leur vitesse linéaire et leur accélération linéaire dépendent de leur distance à l'axe. Cependant, tous les points de l'objet rigide subissent le *même changement d'angle* (ou déplacement angulaire) pendant le même intervalle de temps.
     *   Notre objectif dans ce bloc est de développer le langage et les outils mathématiques pour décrire précisément ce mouvement angulaire.
 
+[![rotation](../images/rotation_def.png)](../images/intro.png)
+
+
 *   **2. Position Angulaire ($\theta$) (25 minutes) :**
     *   **Définition :** Pour spécifier l'orientation d'un objet en rotation, ou la position d'un point sur une trajectoire circulaire, nous utilisons la **position angulaire**, symbolisée par la lettre grecque $\theta$ (thêta). Elle représente l'angle formé par une ligne de référence (fixée à l'objet et passant par l'axe de rotation) avec une direction de référence fixe dans l'espace (par exemple, l'axe des abscisses positives).
         *   *Imaginez un rayon d'une roue de vélo. Sa position angulaire $\theta$ serait l'angle que ce rayon forme avec une ligne horizontale fixe passant par le centre de la roue.*
@@ -22,16 +25,22 @@
         *   **Radians (rad) :** L'unité standard et la plus naturelle en physique et en mathématiques pour mesurer les angles.
             *   **Définition du Radian :** Un radian est l'angle au centre d'un cercle qui intercepte un arc de longueur égale au rayon du cercle.
             *   **Relation Arc-Rayon-Angle :** Si $s$ est la longueur de l'arc, $r$ est le rayon du cercle, et $\theta$ est l'angle en radians, alors : $`s = r\theta`$.
-            *   **Conversions Clés :**
-                *   Un tour complet ($360^\circ$) correspond à la circonférence $2\pi r$. Donc, $2\pi r = r \theta_{tour}$, ce qui implique $\theta_{tour} = 2\pi$ radians.
-                *   $`360^\circ = 2\pi \text{ rad}`$
-                *   $`180^\circ = \pi \text{ rad}`$
-                *   Pour convertir des degrés en radians : angle en radians = angle en degrés $\times \frac{\pi}{180^\circ}$.
-                *   Pour convertir des radians en degrés : angle en degrés = angle en radians $\times \frac{180^\circ}{\pi}$.
-                *   $1 \text{ rad} \approx 57.3^\circ$.
+    *   **Conversions Clés :**
+        *   Un tour complet ($360^\circ$) correspond à la circonférence $2\pi r$. Donc, $2\pi r = r \theta_{tour}$, ce qui implique $\theta_{tour} = 2\pi$ radians.
+        *   $`360^\circ = 2\pi \text{ rad}`$
+        *   $`180^\circ = \pi \text{ rad}`$
+        *   Pour convertir des degrés en radians : 
+            * angle en radians = angle en degrés 
+        $\times \frac{\pi}{180^\circ}$.
+        *   Pour convertir des radians en degrés : 
+            * angle en degrés = angle en radians $\times \frac{180^\circ}{\pi}$.
+        *   $1 \text{ rad} \approx 57.3^\circ$.
     *   **Convention de Signe pour la Rotation :**
         *   Par convention, une rotation dans le **sens antihoraire** (inverse des aiguilles d'une montre) est considérée comme **positive (+)**.
         *   Une rotation dans le **sens horaire** est considérée comme **négative (-)**.
+[![convention](../images/convention.png)
+
+
     *   **Déplacement Angulaire ($\Delta \theta$) :**
         *   Représente le changement de la position angulaire d'un objet.
         *   $`\Delta \theta = \theta_{finale} - \theta_{initiale}`$.
