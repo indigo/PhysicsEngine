@@ -208,7 +208,7 @@
             rotationFolder.add(params, 'initialAngleY', -Math.PI, Math.PI, 0.01).name('Start Angle Y (rad)');
             rotationFolder.add(params, 'initialAngularVelocityY', -10, 10, 0.1).name('Start Ang. Vel. Y (rad/s)');
             rotationFolder.add(params, 'appliedTorqueY', -2.0, 2.0, 0.01).name('Applied Torque Y (Nm)');
-            rotationFolder.add(params, 'angularDamping', 0, 1.0, 0.005).name('Angular Damping');
+            rotationFolder.add(params, 'angularDamping', 0, 1.0, 0.005).name('Frottements');
             // Moment of Inertia is calculated, so we might display it but not make it directly editable
             // Or, allow an override:
             // rotationFolder.add(params, 'overrideMomentOfInertiaY', 0.01, 5.0, 0.01).name('Override I_y (kg·m²)')

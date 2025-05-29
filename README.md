@@ -1,15 +1,7 @@
 FR
 Ceci est le git repo du cours sur les engins de physiques (branche jeu vidéo)
 
-This repository hold a course in physics engine.
-
-The content of the presentation is in French.
-
-It is cut in 10 sessions.
-
-Each session is designed to be a week long, around 6 hours. Half of it being practice.
-
-The sessions' content is in the data directory
+The sessions' content is in the sessions directory
 
 **Plan de Cours : Physique dans le Jeu Vidéo (203-J28-BB) - 10 Sessions**
 Appliquer des notions de mécanique classique et des méthodes numériques pour simuler des objets physiques en mouvement.
@@ -72,14 +64,14 @@ Appliquer des notions de mécanique classique et des méthodes numériques pour 
 - Frottement statique et dynamique (concept, calculs, implémentation).
 - Systèmes de particules : Équations du mouvement, accumulation de forces.
 - Exemples de systèmes de particules simples (par exemple, une fontaine).
-- Examen de Mi-Session (Quiz théorie - Box2D).
+- Examen de Mi-Session (Quiz théorie).
 
 **Session 7: Forces de Ressort, Amortissement Visqueux et Devoir 3 (4 blocs)**
 
 - Force de ressort : Loi de Hooke, calculs, implémentation.
 - Amortissement visqueux : Concept, calculs, implémentation.
 - Demonstration d'un système masse-ressort dans Box2D (un pendule simple).
-- Devoir 3: Implémentation d'un système masse-ressort ou un pendule dans Box2D.
+- Devoir 3: Implémentation d'un système masse-ressort ou un pendule.
 
 **Session 8: Moteurs Physiques et Algorithmes d'Élagage (4 blocs)**
 
