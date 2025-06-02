@@ -150,22 +150,22 @@ Ce document fournit les solutions et des explications détaillées pour les exer
     *   **a) Force Appliquée Perpendiculairement à la Clé :**
         *   Si la force est perpendiculaire à la clé, alors l'angle $\phi = 90^\circ$.
         *   $\sin(90^\circ) = 1$.
-        *   $`\tau = (0.3 \text{ m})(50 \text{ N})\sin(90^\circ) = (0.3 \text{ m})(50 \text{ N})(1)`$
-        *   $`\tau = 15 \text{ N·m}`$.
+        *   $\tau = (0.3 \text{ m})(50 \text{ N})\sin(90^\circ) = (0.3 \text{ m})(50 \text{ N})(1)$
+        *   $\tau = 15 \text{ N}·m$.
 
     *   **b) Force Appliquée à un Angle de $60^\circ$ par rapport à la Clé :**
         *   Ici, $\phi = 60^\circ$.
         *   $\sin(60^\circ) = \frac{\sqrt{3}}{2} \approx 0.866$.
-        *   $`\tau = (0.3 \text{ m})(50 \text{ N})\sin(60^\circ) = (0.3 \text{ m})(50 \text{ N})\left(\frac{\sqrt{3}}{2}\right)`$
-        *   $`\tau = 15 \times \frac{\sqrt{3}}{2} \text{ N·m} = 7.5\sqrt{3} \text{ N·m}`$
-        *   Valeur approximative : $\tau \approx 15 \times 0.866 \text{ N·m} \approx 12.99 \text{ N·m}$.
+        *   $\tau = (0.3 \text{ m})(50 \text{ N})\sin(60^\circ) = (0.3 \text{ m})(50 \text{ N})\left(\frac{\sqrt{3}}{2}\right)$
+        *   $\tau = 15 \times \frac{\sqrt{3}}{2} \text{ N}·m = 7.5\sqrt{3} \text{ N}·m$
+        *   Valeur approximative : $\tau \approx 15 \times 0.866 \text{ N}·m \approx 12.99 \text{ N}·m$.
         *   *Note : Le moment de force est plus faible car seule la composante perpendiculaire de la force contribue à la rotation.*
 
     *   **c) Force Appliquée Parallèlement à la Clé (vers l'écrou) :**
         *   Si la force est parallèle à la clé et dirigée vers l'écrou, l'angle $\phi = 180^\circ$ (ou $0^\circ$ si on considère la direction opposée, mais le résultat pour $\sin \phi$ sera 0 dans les deux cas où la force est alignée avec le levier).
         *   $\sin(180^\circ) = 0$ (et $\sin(0^\circ) = 0$).
         *   $`\tau = (0.3 \text{ m})(50 \text{ N})\sin(180^\circ) = (0.3 \text{ m})(50 \text{ N})(0)`$
-        *   $`\tau = 0 \text{ N·m}`$.
+        *   $`\tau = 0 \text{ N}·m`$.
         *   *Interprétation : Si vous poussez directement le long de la clé vers l'écrou (ou tirez directement en l'éloignant), vous n'exercerez aucun effet de rotation sur l'écrou. La force n'a pas de "bras de levier effectif" ou sa composante perpendiculaire est nulle.*
 
 ---
