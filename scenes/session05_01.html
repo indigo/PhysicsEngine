@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Balle qui Rebondit</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'jsm/controls/OrbitControls.js';
+
+        let camera, scene, renderer;
+        let sphere, velocityArrow, accelerationArrow;
+        let clock = new THREE.Clock();
+        let trailLine;
+        let trailPoints = []; // La variable globale correcte pour les points de la trace
+        const MAX_TRAIL_POINTS = 300;
+
+        const params = {
+            duration: 10.0,
+            sphereRadius: 0.15,
+            arrowLength: 1.0,
+            startPositionX: -4,
+            startPositionY: 2.0,
+            startPositionZ: 0,
+            initialVelocityX: 5,
+            initialVelocityY: 0,
+            initialVelocityZ: 2,
+            gravityY: -9.81,
+            mass: 1.0,
+            airResistance: 0.02,
+            timeStepFactor: 1.0,
+            restitution: 0.7,
+            resetBallistic: function() { resetBallisticMotion(); }
+        };
+
+        let ballisticPosition = new THREE.Vector3(params.startPositionX, params.startPositionY, params.startPositionZ);
+        let currentVelocity = new THREE.Vector3(params.initialVelocityX, params.initialVelocityY, params.initialVelocityZ);
+        let gravityVector = new THREE.Vector3(0, params.gravityY, 0);
+        let lastBallisticTime = 0;
+
+        init();
+        setupGUI();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xbfd1e5);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 4, 12);
+
+            const ambient = new THREE.HemisphereLight(0xffeeee, 0xaaccaa, 1);
+            scene.add(ambient);
+
+            const light = new THREE.DirectionalLight(0xffffff, 2.5);
+            light.position.set(5, 15, 10);
+            light.castShadow = true;
+            light.shadow.radius = 4;
+            light.shadow.blurSamples = 10;
+            light.shadow.mapSize.width = 2048;
+            light.shadow.mapSize.height = 2048;
+            const shadowCamSize = 15;
+            light.shadow.camera.left = -shadowCamSize;
+            light.shadow.camera.bottom = -shadowCamSize;
+            light.shadow.camera.right = shadowCamSize;
+            light.shadow.camera.top = shadowCamSize;
+            light.shadow.camera.near = 1;
+            light.shadow.camera.far = 50;
+            scene.add(light);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+            renderer.setAnimationLoop(animate);
+
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.target = new THREE.Vector3(0, 1, 0);
+            controls.update();
+
+            const floorGeometry = new THREE.PlaneGeometry(20, 20);
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x8899aa, side:THREE.DoubleSide });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.receiveShadow = true;
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            new THREE.TextureLoader().load('https://threejs.org/examples/textures/grid.png', function (texture) {
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(40, 40);
+                floorMaterial.map = texture;
+                floorMaterial.needsUpdate = true;
+            });
+
+            createMotionObject();
+            resetBallisticMotion();
+
+            window.addEventListener('resize', onWindowResize, false);
+            onWindowResize();
+            displayInstructions();
+        }
+
+        function displayInstructions() {
+            console.clear();
+            console.log("--- Ballistic Motion with Restitution ---");
+            console.log("Use the GUI to change parameters.");
+            console.log("Press the 'Reset Simulation' button to apply changes and restart.");
+            console.log("---------------------------------------");
+        }
+
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createMotionObject() {
+            if (sphere) scene.remove(sphere);
+            if (velocityArrow) scene.remove(velocityArrow);
+            if (accelerationArrow) scene.remove(accelerationArrow);
+
+            if (trailLine) {
+                scene.remove(trailLine);
+                if (trailLine.geometry) trailLine.geometry.dispose();
+                if (trailLine.material) trailLine.material.dispose();
+            }
+            trailPoints.length = 0;
+            const trailMaterial = new THREE.LineBasicMaterial({ color: 0x222222, linewidth: 2 });
+            const trailGeometry = new THREE.BufferGeometry().setFromPoints(trailPoints);
+            trailLine = new THREE.Line(trailGeometry, trailMaterial);
+            scene.add(trailLine);
+
+            const sphereGeom = new THREE.SphereGeometry(params.sphereRadius, 16, 16);
+            const sphereMat = new THREE.MeshStandardMaterial({ color: 0xdd4444, metalness:0.3, roughness:0.6 });
+            sphere = new THREE.Mesh(sphereGeom, sphereMat);
+            sphere.castShadow = true;
+            scene.add(sphere);
+
+            velocityArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), params.arrowLength, 0x3333cc, 0.2, 0.1);
+            scene.add(velocityArrow);
+            accelerationArrow = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), params.arrowLength, 0xcc33cc, 0.2, 0.1);
+            scene.add(accelerationArrow);
+        }
+
+        function resetBallisticMotion() {
+            ballisticPosition.set(params.startPositionX, params.startPositionY, params.startPositionZ);
+            currentVelocity.set(params.initialVelocityX, params.initialVelocityY, params.initialVelocityZ);
+            gravityVector.set(0, params.gravityY, 0);
+            lastBallisticTime = clock.getElapsedTime();
+
+            trailPoints = [ballisticPosition.clone()];
+            if (trailLine && trailLine.geometry) {
+                trailLine.geometry.setFromPoints(trailPoints);
+            }
+            if (sphere) sphere.position.copy(ballisticPosition);
+        }
+
+        function getBallisticMotion(dt) {
+            gravityVector.set(0, params.gravityY, 0);
+
+            const velocityMagnitude = currentVelocity.length();
+            let dragForce = new THREE.Vector3();
+
+            if (velocityMagnitude > 0.001) {
+                const velocityDirection = currentVelocity.clone().normalize();
+                const dragMagnitude = params.airResistance * velocityMagnitude * velocityMagnitude;
+                dragForce = velocityDirection.multiplyScalar(-dragMagnitude);
+            }
+
+            let netAcceleration = new THREE.Vector3();
+            if (params.mass > 0.001) {
+                 netAcceleration.add(dragForce.clone().divideScalar(params.mass));
+            }
+            netAcceleration.add(gravityVector);
+
+            currentVelocity.addScaledVector(netAcceleration, dt);
+            ballisticPosition.addScaledVector(currentVelocity, dt);
+
+            const groundY = 0.0;
+            if (ballisticPosition.y - params.sphereRadius < groundY) {
+                ballisticPosition.y = groundY + params.sphereRadius;
+                currentVelocity = currentVelocity.multiplyScalar(params.restitution);
+                currentVelocity.y = -currentVelocity.y;
+
+                if (Math.abs(currentVelocity.y) < 0.1) {
+                    currentVelocity.y = 0;
+                }
+            }
+
+            return {
+                pos: ballisticPosition.clone(),
+                vel: currentVelocity.clone(),
+                acc: netAcceleration.clone()
+            };
+        }
+
+        function animate() {
+            let dt = clock.getDelta();
+            const max_dt = 0.033;
+            const effective_dt = Math.min(dt, max_dt) * params.timeStepFactor;
+
+            const t_elapsed_cycle = clock.getElapsedTime() % params.duration;
+            if ( (clock.getElapsedTime() > params.duration) && (t_elapsed_cycle < lastBallisticTime) ) {
+                 resetBallisticMotion();
+            }
+            lastBallisticTime = t_elapsed_cycle;
+
+            const ballistic = getBallisticMotion(effective_dt);
+
+            if (sphere) {
+                sphere.position.copy(ballistic.pos);
+
+                velocityArrow.position.copy(ballistic.pos);
+                if (ballistic.vel.lengthSq() > 0.0001) {
+                    velocityArrow.setDirection(ballistic.vel.clone().normalize());
+                }
+                velocityArrow.setLength(Math.min(params.arrowLength, ballistic.vel.length() * 0.3), 0.2, 0.1);
+
+                accelerationArrow.position.copy(ballistic.pos);
+                if (ballistic.acc.lengthSq() > 0.0001) {
+                    accelerationArrow.setDirection(ballistic.acc.clone().normalize());
+                }
+                accelerationArrow.setLength(Math.min(params.arrowLength, ballistic.acc.length() * 0.3), 0.2, 0.1);
+            }
+
+            // --- Utiliser trailPoints PARTOUT pour la trace ---
+            if (trailPoints.length >= MAX_TRAIL_POINTS) {
+                trailPoints.shift(); 
+            }
+            trailPoints.push(ballistic.pos.clone()); // Utiliser trailPoints
+
+            if (trailLine && trailLine.geometry && trailPoints.length > 1) { // Utiliser trailPoints
+                trailLine.geometry.setFromPoints(trailPoints); // Utiliser trailPoints
+            }
+            // --- Fin de la correction pour la trace ---
+
+            renderer.render(scene, camera);
+        }
+
+        function setupGUI() {
+            const gui = new dat.GUI();
+
+            const generalFolder = gui.addFolder('General Controls');
+            generalFolder.add(params, 'duration', 1, 30, 0.1).name('Auto-Reset Cycle (s)');
+            generalFolder.add(params, 'sphereRadius', 0.05, 0.5, 0.01).name('Sphere Radius').onChange(createMotionObject);
+            generalFolder.add(params, 'arrowLength', 0.2, 3.0, 0.1).name('Max Arrow Length');
+            generalFolder.add(params, 'timeStepFactor', 0.1, 3.0, 0.05).name('Time Speed');
+            generalFolder.open();
+
+            const ballisticFolder = gui.addFolder('Ballistic Parameters');
+            const startPosFolder = ballisticFolder.addFolder('Start Position');
+            startPosFolder.add(params, 'startPositionX', -5, 5, 0.1).name('X');
+            startPosFolder.add(params, 'startPositionY', params.sphereRadius, 10, 0.1).name('Y');
+            startPosFolder.add(params, 'startPositionZ', -5, 5, 0.1).name('Z');
+            const initialVelFolder = ballisticFolder.addFolder('Initial Velocity (m/s)');
+            initialVelFolder.add(params, 'initialVelocityX', -10, 10, 0.1).name('X');
+            initialVelFolder.add(params, 'initialVelocityY', -10, 20, 0.1).name('Y');
+            initialVelFolder.add(params, 'initialVelocityZ', -10, 10, 0.1).name('Z');
+            
+            ballisticFolder.add(params, 'gravityY', -20, 0, 0.1).name('Gravity Y (m/s²)');
+            ballisticFolder.add(params, 'mass', 0.01, 10, 0.01).name('Mass (kg)');
+            ballisticFolder.add(params, 'airResistance', 0, 0.5, 0.001).name('Air Resist. Coeff.');
+            ballisticFolder.add(params, 'restitution', 0, 1, 0.01).name('Restitution (Bounce)');
+            ballisticFolder.open();
+
+            gui.add(params, 'resetBallistic').name('Reset Simulation');
+        }
+    </script>
+</body>
+</html>

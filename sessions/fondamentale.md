@@ -15,7 +15,8 @@ Au cœur de la simulation des mouvements se trouvent les lois de Newton :
     *   **Implication pour la simulation :** Si la somme des forces ($\vec{F}_{net}$) sur un objet est nulle, son accélération est nulle, et sa vitesse ne change pas.
 *   **Deuxième Loi de Newton (Principe Fondamental de la Dynamique) :**
     *   L'accélération ($\vec{a}$) d'un objet est directement proportionnelle à la force nette ($\vec{F}_{net}$) agissant sur lui et inversement proportionnelle à sa masse ($m$).
-    *   **Équation clé :** $`\vec{F}_{net} = m \vec{a}`$
+    *   **Équation clé :** 
+    ## $\vec{F}_{net} = m \vec{a}$
     *   On peut la réarranger pour trouver l'accélération : $`\vec{a} = \frac{\vec{F}_{net}}{m}`$
     *   **Implication pour la simulation :** C'est cette équation qui nous permet de déterminer comment la vitesse d'un objet va changer. Si nous connaissons les forces, nous pouvons calculer l'accélération.
 *   **Troisième Loi de Newton (Principe des Actions Réciproques) :**
@@ -156,4 +157,75 @@ Le choix dépend de plusieurs facteurs :
 2.  Puis, implémenter **Euler Semi-Implicite** et comparer les résultats (surtout si vous avez un système avec un ressort, la différence de stabilité peut être visible).
 3.  Mentionner Verlet et Runge-Kutta comme des étapes suivantes plus avancées que les moteurs physiques utilisent souvent, mais dont l'implémentation manuelle est plus complexe pour une première approche.
 
-Cette explication détaillée devrait donner aux étudiants une base solide pour comprendre les mécanismes fondamentaux derrière la simulation physique. L'important est qu'ils saisissent le principe de discrétisation du temps, le rôle des lois de Newton, et l'idée que les méthodes d'intégration sont des approximations pour prédire l'avenir de l'état d'un système.
+Vous avez tout à fait raison de poser cette question, c'est une nuance importante !
+
+La **conservation de la quantité de mouvement n'est pas une des trois lois de Newton *en tant que telle***, mais elle est une **conséquence directe et très importante de la deuxième et de la troisième loi de Newton** lorsqu'elles sont appliquées à un système d'objets.
+
+Voici comment on peut l'expliquer et la dériver :
+
+---
+
+**Conservation de la Quantité de Mouvement : Une Conséquence des Lois de Newton**
+
+Bien que les trois lois de Newton soient les fondations, le principe de **conservation de la quantité de mouvement** est un outil extrêmement puissant qui découle de ces lois, surtout lorsqu'on analyse des systèmes de plusieurs objets en interaction (comme lors des collisions).
+
+**Définition de la Quantité de Mouvement (Rappel) :**
+
+Pour un objet unique de masse $m$ et de vitesse $\vec{v}$, sa quantité de mouvement (ou moment linéaire) est :
+
+## $\vec{p} = m\vec{v}$
+
+Pour un système de plusieurs objets, la **quantité de mouvement totale du système** ($\vec{P}_{total}$) est la somme vectorielle des quantités de mouvement de chaque objet :
+
+## $\vec{P}_{total} = \vec{p}_1 + \vec{p}_2 + \vec{p}_3 + \dots = \sum_i m_i\vec{v}_i$
+
+**Lien avec la Deuxième Loi de Newton :**
+
+La deuxième loi de Newton peut s'écrire sous la forme :
+
+## $\vec{F}_{net} = \frac{d\vec{p}}{dt}$
+
+Cela signifie que la force nette agissant sur un objet est égale au taux de changement de sa quantité de mouvement.
+
+Si la **force nette externe** agissant sur un **système** d'objets est nulle, alors le taux de changement de la **quantité de mouvement totale du système** est nul :
+Si $`\vec{F}_{net, externe\_sur\_système} = 0`$, alors $`\frac{d\vec{P}_{total}}{dt} = 0`$.
+
+Et si la dérivée d'une quantité par rapport au temps est nulle, cela signifie que cette quantité **reste constante**.
+
+**Principe de Conservation de la Quantité de Mouvement :**
+
+> Si la force nette externe agissant sur un système d'objets est nulle, alors la quantité de mouvement totale de ce système reste constante (est conservée).
+
+Mathématiquement :
+Si $`\vec{F}_{net, externe\_sur\_système} = 0`$, alors $`\vec{P}_{total, initial} = \vec{P}_{total, final}`$.
+
+**Rôle de la Troisième Loi de Newton dans la Conservation :**
+
+La troisième loi de Newton (action-réaction) est cruciale pour comprendre *pourquoi* la quantité de mouvement totale d'un système isolé est conservée, même lorsque les objets à l'intérieur du système exercent des forces les uns sur les autres (forces internes).
+
+Considérons un système de deux objets A et B qui interagissent (par exemple, lors d'une collision) :
+*   L'objet A exerce une force $\vec{F}_{A \text{ sur } B}$ sur l'objet B.
+*   Selon la troisième loi, l'objet B exerce une force $\vec{F}_{B \text{ sur } A}$ sur l'objet A, telle que $\vec{F}_{B \text{ sur } A} = - \vec{F}_{A \text{ sur } B}$.
+
+Ces forces sont des **forces internes** au système {A, B}.
+Le changement de quantité de mouvement de B dû à A est $d\vec{p}_B/dt = \vec{F}_{A \text{ sur } B}$.
+Le changement de quantité de mouvement de A dû à B est $d\vec{p}_A/dt = \vec{F}_{B \text{ sur } A}$.
+
+Le taux de changement de la quantité de mouvement *totale* du système dû à ces forces internes est :
+$`\frac{d\vec{P}_{total}}{dt} = \frac{d\vec{p}_A}{dt} + \frac{d\vec{p}_B}{dt} = \vec{F}_{B \text{ sur } A} + \vec{F}_{A \text{ sur } B}`$
+Puisque $\vec{F}_{B \text{ sur } A} = - \vec{F}_{A \text{ sur } B}$, alors :
+$`\frac{d\vec{P}_{total}}{dt} = -\vec{F}_{A \text{ sur } B} + \vec{F}_{A \text{ sur } B} = 0`$
+
+Cela montre que les **forces internes s'annulent par paires et ne peuvent pas changer la quantité de mouvement totale du système**. Seules les **forces externes nettes** peuvent le faire.
+
+**En résumé pour les étudiants :**
+
+1.  **Lois de Newton :**
+    *   **1ère :** Inertie (un objet conserve son mouvement si $\vec{F}_{net}=0$).
+    *   **2ème :** $`\vec{F}_{net} = m\vec{a}`$ ou $`\vec{F}_{net} = \frac{d\vec{p}}{dt}`$ (la force nette cause un changement de mouvement).
+    *   **3ème :** Action-Réaction ($`\vec{F}_{AB} = -\vec{F}_{BA}`$).
+
+2.  **Conservation de la Quantité de Mouvement :**
+    *   **Découle de la 2ème et 3ème loi.**
+    *   **Principe :** Si la somme des forces *externes* sur un système est nulle, la quantité de mouvement *totale* de ce système ne change pas.
+    *   **Utilité :** Très important pour analyser les collisions, les explosions, les reculs, etc., car souvent, pendant la brève durée de ces interactions, les forces internes sont beaucoup plus grandes que les forces externes (qui peuvent alors être négligées).
