@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bloc 3: Démo - Analyse d'Impact Statique (Mouvement Continu)</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../three.js/build/three.module.js",
+                "jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'jsm/controls/OrbitControls.js';
+
+        let camera, scene, renderer;
+        let clock = new THREE.Clock();
+        let controls;
+
+        let paletA_mesh, paletB_mesh;
+        let normalArrow, mtvArrowA, mtvArrowB;
+        let floorMesh;
+        let ghostPaletA_mesh, ghostPaletB_mesh; 
+
+        let trailLineA, trailLineB;
+        let trailPointsA = [], trailPointsB = [];
+        const MAX_TRAIL_POINTS = 200;
+        let iterationDotsGroup, iterationDots = [];
+        const MAX_ITERATION_DOTS = 100;
+        let dotGeometry, dotMaterial;
+
+        const PALET_THICKNESS = 0.1;
+        const PLAY_AREA_X = 5;
+        const PLAY_AREA_Z = 5;
+
+        const simParams = {
+            radiusA: 0.3, initialVelAX: 1.5,
+            radiusB: 0.4, initialVelBX: -1.0,
+            massFactor: 5.0, impactParameter: 0.2, separationDistance: 4.0,
+            restitution: 0.9, timeScale: 1.0,
+            showTrailA: true, showTrailB: true, showIterationDots: false,
+            showCollisionInfo: true, 
+            physicsFrameSkip: 0,
+            resetSimulation: function() { resetSimulation(); }
+        };
+
+        let massA, massB;
+        let posA = new THREE.Vector2(), velA = new THREE.Vector2();
+        let posB = new THREE.Vector2(), velB = new THREE.Vector2();
+
+        let collisionOccurredThisRun = false;
+        let collisionPointNormal = new THREE.Vector3();
+        let collisionPointMid = new THREE.Vector3();
+        let mtvAppliedA_vis = new THREE.Vector3(); // Pour la visualisation des flèches MTV
+        let mtvAppliedB_vis = new THREE.Vector3();
+        let paletAPosAtCollision_vis = new THREE.Vector3(); // Pour les fantômes
+        let paletBPosAtCollision_vis = new THREE.Vector3();
+        let physicsStepCounter = 0;
+
+        init();
+        setupDatGUI();
+
+        function calculateMasses() { 
+            massA = simParams.massFactor * Math.pow(simParams.radiusA, 2);
+            massB = simParams.massFactor * Math.pow(simParams.radiusB, 2);
+            if (massA <= 0.00001) massA = 0.00001;
+            if (massB <= 0.00001) massB = 0.00001;
+        }
+
+        function init() { 
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x445566); 
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 7, 0.1); 
+            camera.lookAt(0, 0, 0);
+
+            const ambient = new THREE.HemisphereLight(0xffffff, 0x888888, 0.9);
+            scene.add(ambient);
+            const light = new THREE.DirectionalLight(0xffffff, 0.7);
+            light.position.set(2, 5, 3);
+            light.castShadow = true; 
+            scene.add(light);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+            renderer.setAnimationLoop(animate);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target = new THREE.Vector3(0,0,0);
+            controls.update();
+
+            dotGeometry = new THREE.SphereGeometry(0.02, 8, 8);
+            dotMaterial = new THREE.MeshBasicMaterial({ color: 0xcccccc });
+
+            createVisuals();
+            resetSimulation();
+
+            window.addEventListener('resize', onWindowResize, false);
+            onWindowResize();
+            displayInstructions();
+        }
+
+        function displayInstructions(){ 
+            console.clear();
+            console.log("--- Démo: Collision de Deux Palets - Analyse d'Impact ---");
+            console.log("Les informations de la première collision resteront affichées.");
+        }
+
+        function onWindowResize() { 
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createVisuals() {
+            // Sol
+            if (floorMesh) scene.remove(floorMesh);
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x8899aa, side:THREE.DoubleSide, metalness:0.2, roughness:0.8 });
+            new THREE.TextureLoader().load('https://threejs.org/examples/textures/grid.png', function (texture) {
+                texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(PLAY_AREA_X * 4, PLAY_AREA_Z * 4);
+                floorMaterial.map = texture; floorMaterial.needsUpdate = true;
+            });
+            const floorGeometry = new THREE.PlaneGeometry(PLAY_AREA_X * 2, PLAY_AREA_Z * 2);
+            floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+            floorMesh.rotation.x = -Math.PI / 2; 
+            floorMesh.receiveShadow = true; 
+            scene.add(floorMesh);
+
+            // Palets
+            const geomA = new THREE.CylinderGeometry(simParams.radiusA, simParams.radiusA, PALET_THICKNESS, 32); 
+            const matA = new THREE.MeshStandardMaterial({ color: 0xff4444, metalness:0.4, roughness:0.6 });
+            if (paletA_mesh) scene.remove(paletA_mesh);
+            paletA_mesh = new THREE.Mesh(geomA, matA);
+            paletA_mesh.castShadow = true; scene.add(paletA_mesh);
+
+            const geomB = new THREE.CylinderGeometry(simParams.radiusB, simParams.radiusB, PALET_THICKNESS, 32);
+            const matB = new THREE.MeshStandardMaterial({ color: 0x4444ff, metalness:0.4, roughness:0.6 });
+            if (paletB_mesh) scene.remove(paletB_mesh);
+            paletB_mesh = new THREE.Mesh(geomB, matB);
+            paletB_mesh.castShadow = true; scene.add(paletB_mesh);
+
+            // Flèches
+            if (normalArrow) scene.remove(normalArrow);
+            normalArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 0.6, 0xffff00, 0.12, 0.06);
+            normalArrow.visible = false; scene.add(normalArrow);
+
+            if (mtvArrowA) scene.remove(mtvArrowA);
+            mtvArrowA = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 0.5, 0x00dd00, 0.1, 0.05);
+            mtvArrowA.visible = false; scene.add(mtvArrowA);
+
+            if (mtvArrowB) scene.remove(mtvArrowB);
+            mtvArrowB = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 0.5, 0x00aa00, 0.1, 0.05);
+            mtvArrowB.visible = false; scene.add(mtvArrowB);
+
+            // Traces et Groupe de Points
+            if (trailLineA) { scene.remove(trailLineA); trailLineA.geometry.dispose(); trailLineA.material.dispose(); }
+            trailPointsA.length = 0;
+            const trailMatA = new THREE.LineBasicMaterial({ color: 0xff8888 });
+            const trailGeomA = new THREE.BufferGeometry().setFromPoints(trailPointsA);
+            trailLineA = new THREE.Line(trailGeomA, trailMatA); scene.add(trailLineA);
+
+            if (trailLineB) { scene.remove(trailLineB); trailLineB.geometry.dispose(); trailLineB.material.dispose(); }
+            trailPointsB.length = 0;
+            const trailMatB = new THREE.LineBasicMaterial({ color: 0x8888ff });
+            const trailGeomB = new THREE.BufferGeometry().setFromPoints(trailPointsB);
+            trailLineB = new THREE.Line(trailGeomB, trailMatB); scene.add(trailLineB);
+
+            if (iterationDotsGroup) {
+                iterationDotsGroup.children.forEach(child => iterationDotsGroup.remove(child));
+                scene.remove(iterationDotsGroup);
+            }
+            iterationDotsGroup = new THREE.Group(); scene.add(iterationDotsGroup);
+            iterationDots = [];
+
+            // Meshes "Fantômes"
+            const ghostMaterial = new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.35, depthWrite: false }); // depthWrite:false pour mieux voir
+            if(ghostPaletA_mesh) scene.remove(ghostPaletA_mesh);
+            ghostPaletA_mesh = new THREE.Mesh(geomA.clone(), ghostMaterial.clone());
+            ghostPaletA_mesh.material.color.setHex(0xffcccc); // Plus clair que le palet réel
+            ghostPaletA_mesh.visible = false; scene.add(ghostPaletA_mesh);
+
+            if(ghostPaletB_mesh) scene.remove(ghostPaletB_mesh);
+            ghostPaletB_mesh = new THREE.Mesh(geomB.clone(), ghostMaterial.clone());
+            ghostPaletB_mesh.material.color.setHex(0xccccff);
+            ghostPaletB_mesh.visible = false; scene.add(ghostPaletB_mesh);
+        }
+
+        function resetSimulation() {
+            calculateMasses(); 
+            const totalRadius = simParams.radiusA + simParams.radiusB;
+            const yOffsetBetweenTrajectories = simParams.impactParameter * totalRadius;
+            posA.x = -simParams.separationDistance / 2;
+            posA.y = 0; 
+            velA.set(simParams.initialVelAX, 0);
+            posB.x = simParams.separationDistance / 2;
+            posB.y = yOffsetBetweenTrajectories;
+            velB.set(simParams.initialVelBX, 0);
+
+            if(paletA_mesh) paletA_mesh.position.set(posA.x, PALET_THICKNESS/2, posA.y);
+            if(paletB_mesh) paletB_mesh.position.set(posB.x, PALET_THICKNESS/2, posB.y);
+            
+            collisionOccurredThisRun = false; // Réinitialiser le flag de collision
+
+            // Cacher les visualisations de collision
+            normalArrow.visible = false;
+            mtvArrowA.visible = false;
+            mtvArrowB.visible = false;
+            if(ghostPaletA_mesh) ghostPaletA_mesh.visible = false;
+            if(ghostPaletB_mesh) ghostPaletB_mesh.visible = false;
+
+            trailPointsA = [new THREE.Vector3(posA.x, PALET_THICKNESS/2, posA.y)];
+            trailPointsB = [new THREE.Vector3(posB.x, PALET_THICKNESS/2, posB.y)];
+            if (trailLineA) trailLineA.geometry.setFromPoints(trailPointsA);
+            if (trailLineB) trailLineB.geometry.setFromPoints(trailPointsB);
+
+            iterationDotsGroup.children.forEach(child => iterationDotsGroup.remove(child));
+            iterationDots = [];
+            physicsStepCounter = 0;
+        }
+
+        function updatePhysics(dt) {
+            // --- Affichage des Informations de la PREMIÈRE Collision Stockée ---
+            if (collisionOccurredThisRun && simParams.showCollisionInfo) {
+                if(ghostPaletA_mesh) { ghostPaletA_mesh.position.copy(paletAPosAtCollision_vis); ghostPaletA_mesh.visible = true; }
+                if(ghostPaletB_mesh) { ghostPaletB_mesh.position.copy(paletBPosAtCollision_vis); ghostPaletB_mesh.visible = true; }
+                if(normalArrow) { normalArrow.position.copy(collisionPointMid); normalArrow.setDirection(collisionPointNormal); normalArrow.visible = true; }
+                if(mtvArrowA) { 
+                    mtvArrowA.position.copy(paletAPosAtCollision_vis); // Origine sur le fantôme A
+                    if (mtvAppliedA_vis.lengthSq() > 0.00001) mtvArrowA.setDirection(mtvAppliedA_vis.clone().normalize()); 
+                    mtvArrowA.setLength(mtvAppliedA_vis.length()); 
+                    mtvArrowA.visible = true; 
+                }
+                if(mtvArrowB) { 
+                    mtvArrowB.position.copy(paletBPosAtCollision_vis); // Origine sur le fantôme B
+                    if (mtvAppliedB_vis.lengthSq() > 0.00001) mtvArrowB.setDirection(mtvAppliedB_vis.clone().normalize()); 
+                    mtvArrowB.setLength(mtvAppliedB_vis.length()); 
+                    mtvArrowB.visible = true; 
+                }
+            } else { // Cacher si l'option est désactivée ou si pas encore de collision
+                if(ghostPaletA_mesh) ghostPaletA_mesh.visible = false;
+                if(ghostPaletB_mesh) ghostPaletB_mesh.visible = false;
+                if(normalArrow) normalArrow.visible = false;
+                if(mtvArrowA) mtvArrowA.visible = false;
+                if(mtvArrowB) mtvArrowB.visible = false;
+            }
+
+            // --- Simulation du Mouvement des Palets Réels ---
+            // On met à jour la position AVANT de tester la collision pour ce pas de temps
+            posA.addScaledVector(velA, dt);
+            posB.addScaledVector(velB, dt);
+
+            // --- Détection et Réponse à la Collision ---
+            let tempCollisionNormalVec2 = new THREE.Vector2().subVectors(posB, posA); 
+            const distSq = tempCollisionNormalVec2.lengthSq(); 
+            const sumRadii = simParams.radiusA + simParams.radiusB;
+            const sumRadiiSq = sumRadii * sumRadii;
+
+            if (distSq < sumRadiiSq && distSq > 0.000001) { // Collision détectée
+                if (!collisionOccurredThisRun) { // Traiter et stocker seulement la PREMIÈRE collision
+                    collisionOccurredThisRun = true; 
+                    const dist = Math.sqrt(distSq);
+                    tempCollisionNormalVec2.normalize(); // Normaliser
+
+                    // Stocker les positions AU MOMENT DE L'IMPACT (avant correction de pénétration) pour les fantômes
+                    paletAPosAtCollision_vis.set(posA.x, PALET_THICKNESS/2, posA.y);
+                    paletBPosAtCollision_vis.set(posB.x, PALET_THICKNESS/2, posB.y);
+
+                    // Stocker la normale et le point médian pour les flèches
+                    collisionPointNormal.set(tempCollisionNormalVec2.x, 0, tempCollisionNormalVec2.y); // Convertir en Vector3
+                    const midPointVec2 = new THREE.Vector2().addVectors(posA, posB).multiplyScalar(0.5);
+                    collisionPointMid.set(midPointVec2.x, PALET_THICKNESS + 0.05, midPointVec2.y);
+                    
+                    const penetrationDepth = sumRadii - dist;
+                    let mtvA_temp_vec2 = new THREE.Vector2(); 
+                    let mtvB_temp_vec2 = new THREE.Vector2();
+
+                    if (penetrationDepth > 0) {
+                        const totalInverseMass = (massA > 0.00001 ? 1/massA : 0) + (massB > 0.00001 ? 1/massB : 0);
+                        if (totalInverseMass > 0.00001) {
+                            const pushA_factor = (massA > 0.00001 ? (1/massA) / totalInverseMass : 0);
+                            const pushB_factor = (massB > 0.00001 ? (1/massB) / totalInverseMass : 0);
+                            
+                            mtvA_temp_vec2.copy(tempCollisionNormalVec2).multiplyScalar(-penetrationDepth * pushA_factor);
+                            mtvB_temp_vec2.copy(tempCollisionNormalVec2).multiplyScalar(penetrationDepth * pushB_factor);
+                            
+                            // Appliquer la correction de pénétration aux positions PHYSIQUES
+                            posA.add(mtvA_temp_vec2); 
+                            posB.add(mtvB_temp_vec2);
+
+                            // Stocker les MTV appliqués (convertis en Vector3 pour ArrowHelper)
+                            mtvAppliedA_vis.set(mtvA_temp_vec2.x, 0, mtvA_temp_vec2.y);
+                            mtvAppliedB_vis.set(mtvB_temp_vec2.x, 0, mtvB_temp_vec2.y);
+                        }
+                    }
+
+                    // Réponse impulsionnelle aux vitesses
+                    const velA_n_scalar = velA.dot(tempCollisionNormalVec2);
+                    const velB_n_scalar = velB.dot(tempCollisionNormalVec2);
+
+                    // On applique la réponse aux vitesses seulement si les objets s'approchaient
+                    if (velB_n_scalar - velA_n_scalar < -0.001) { 
+                        const e = simParams.restitution;
+                        const m1 = massA; const m2 = massB; 
+                        if ( (m1 + m2) > 0.00001 ) {
+                            const new_velA_n_scalar = (velA_n_scalar * (m1 - e*m2) + (1 + e) * m2 * velB_n_scalar) / (m1 + m2);
+                            const new_velB_n_scalar = (velB_n_scalar * (m2 - e*m1) + (1 + e) * m1 * velA_n_scalar) / (m1 + m2);
+                            const delta_velA_n = new_velA_n_scalar - velA_n_scalar;
+                            const delta_velB_n = new_velB_n_scalar - velB_n_scalar;
+                            velA.addScaledVector(tempCollisionNormalVec2, delta_velA_n);
+                            velB.addScaledVector(tempCollisionNormalVec2, delta_velB_n);
+                        }
+                    }
+                } // Fin du if (!collisionOccurredThisRun) pour le traitement de la première collision
+            } // Fin du if (distSq < sumRadiiSq)
+        } // Fin updatePhysics
+
+        function addIterationDot(positionVec2, colorHex) { /* ... comme avant ... */ 
+            if (!simParams.showIterationDots) return;
+            if (iterationDots.length >= MAX_ITERATION_DOTS) {
+                const oldDot = iterationDots.shift(); 
+                iterationDotsGroup.remove(oldDot); 
+            }
+            const dot = new THREE.Mesh(dotGeometry, dotMaterial.clone());
+            dot.material.color.setHex(colorHex);
+            dot.position.set(positionVec2.x, PALET_THICKNESS / 2, positionVec2.y);
+            iterationDotsGroup.add(dot);
+            iterationDots.push(dot); 
+        }
+
+        function animate() {
+            let dt = clock.getDelta(); 
+            const max_dt = 0.033;
+            const effective_dt = Math.min(dt, max_dt) * simParams.timeScale;
+            
+            // Frame Skip Logic
+            if (physicsStepCounter >= simParams.physicsFrameSkip) {
+                updatePhysics(effective_dt * (simParams.physicsFrameSkip + 1));
+                physicsStepCounter = 0;
+            } else {
+                physicsStepCounter++;
+            }
+            
+            // Mise à jour visuelle à chaque frame
+            if(paletA_mesh) paletA_mesh.position.set(posA.x, PALET_THICKNESS/2, posA.y);
+            if(paletB_mesh) paletB_mesh.position.set(posB.x, PALET_THICKNESS/2, posB.y);
+
+            // Traces (mises à jour seulement aux pas de physique)
+            if (physicsStepCounter === 0) { // Correspond à un pas de physique effectif
+                if (simParams.showTrailA && trailLineA) {
+                    if (trailPointsA.length >= MAX_TRAIL_POINTS) trailPointsA.shift();
+                    trailPointsA.push(new THREE.Vector3(posA.x, PALET_THICKNESS/2, posA.y));
+                    if (trailPointsA.length > 1) trailLineA.geometry.setFromPoints(trailPointsA);
+                }
+                if (simParams.showTrailB && trailLineB) {
+                    if (trailPointsB.length >= MAX_TRAIL_POINTS) trailPointsB.shift();
+                    trailPointsB.push(new THREE.Vector3(posB.x, PALET_THICKNESS/2, posB.y));
+                    if (trailPointsB.length > 1) trailLineB.geometry.setFromPoints(trailPointsB);
+                }
+                addIterationDot(posA, 0xffaaaa);
+                addIterationDot(posB, 0xaaaaff);
+            }
+            if(trailLineA) trailLineA.visible = simParams.showTrailA;
+            if(trailLineB) trailLineB.visible = simParams.showTrailB;
+            if(iterationDotsGroup) iterationDotsGroup.visible = simParams.showIterationDots;
+            
+            // Reset si un palet sort de la zone (MAIS seulement si on n'a pas encore figé une collision)
+            const DANGER_ZONE_X = PLAY_AREA_X + 1.0;
+            const DANGER_ZONE_Z = PLAY_AREA_Z + 1.0;
+            if (!collisionOccurredThisRun && 
+                (Math.abs(posA.x) > DANGER_ZONE_X || Math.abs(posA.y) > DANGER_ZONE_Z ||
+                 Math.abs(posB.x) > DANGER_ZONE_X || Math.abs(posB.y) > DANGER_ZONE_Z)) {
+                resetSimulation();
+            }
+
+            if(controls) controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function setupDatGUI() {
+            const gui = new dat.GUI();
+            gui.add(simParams, 'resetSimulation').name("Reset Simulation");
+            gui.add(simParams, 'timeScale', 0.05, 2.0, 0.05).name('Simulation Speed');
+            gui.add(simParams, 'massFactor', 1.0, 20.0, 0.1).name('Palet Mass Factor').onChange(resetSimulation);
+
+            const vizFolder = gui.addFolder('Visualisation');
+            vizFolder.add(simParams, 'showTrailA').name('Trace Palet A');
+            vizFolder.add(simParams, 'showTrailB').name('Trace Palet B');
+            vizFolder.add(simParams, 'showIterationDots').name('Points d\'Itération');
+            vizFolder.add(simParams, 'showCollisionInfo').name('Show Collision Info');
+            vizFolder.add(simParams, 'physicsFrameSkip', 0, 10, 1).name('Physics Frame Skip');
+            vizFolder.open();
+
+            const collisionSetupFolder = gui.addFolder('Collision Setup');
+            collisionSetupFolder.add(simParams, 'separationDistance', 1.0, 8.0, 0.1).name('Initial X Sep.').onChange(resetSimulation);
+            collisionSetupFolder.add(simParams, 'impactParameter', 0, 1.0, 0.01).name('Impact Y-Offset').onChange(resetSimulation);
+            collisionSetupFolder.add(simParams, 'restitution', 0, 1.0, 0.01).name('Restitution (e)');
+            collisionSetupFolder.open();
+
+            const paletAFolder = gui.addFolder('Palet A (Rouge)');
+            paletAFolder.add(simParams, 'radiusA', 0.1, 1.0, 0.01).name('Rayon').onChange(() => {createVisuals(); resetSimulation();});
+            paletAFolder.add(simParams, 'initialVelAX', -3, 3, 0.05).name('Start Vel X').onChange(resetSimulation);
+            paletAFolder.open();
+
+            const paletBFolder = gui.addFolder('Palet B (Bleu)');
+            paletBFolder.add(simParams, 'radiusB', 0.1, 1.0, 0.01).name('Rayon').onChange(() => {createVisuals(); resetSimulation();});
+            paletBFolder.add(simParams, 'initialVelBX', -3, 3, 0.05).name('Start Vel X').onChange(resetSimulation);
+            paletBFolder.open();
+        }
+
+    </script>
+</body>
+</html>

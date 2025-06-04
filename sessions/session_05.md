@@ -173,102 +173,127 @@
         *   Si une collision est confirmée, cette phase calcule également des informations importantes pour la réponse à la collision, comme le point de contact, la normale de collision, et la profondeur de pénétration.
     *   Cette stratégie en deux phases améliore considérablement les performances de la détection de collision dans les scènes complexes.
 
-
 ---
 
-**BLOC 3 : Réponse aux Collisions Simples et Démonstration Interactive (1h30)**
+**BLOC 3 : Réponse aux Collisions et Démonstration Interactive (1h30)**
 
 *   **A. Principes Fondamentaux de la Réponse aux Collisions (20 minutes)**
-    *   "Maintenant que nous savons comment détecter une collision, que devons-nous faire pour que les objets réagissent de manière crédible ?"
-    *   La **réponse à la collision** est le processus qui modifie l'état des objets (principalement leur position et leur vitesse) après qu'une collision a été détectée.
-    *   Elle comporte généralement deux aspects principaux :
-        1.  **Résolution de l'Interpénétration :** Empêcher les objets de "s'enfoncer" les uns dans les autres.
-        2.  **Changement des Vitesses :** Simuler l'effet de l'impact sur le mouvement des objets (le rebond).
-*   **B. Résolution de l'Interpénétration (20 minutes)**
-    *   **Le Problème :** Dans une simulation avec des pas de temps discrets ($\Delta t$), au moment où nous détectons une collision, les objets peuvent déjà avoir légèrement dépassé leur point de contact idéal et s'être interpénétrés. Si nous ne corrigeons pas cela, ils peuvent sembler "collés" ou passer à travers.
-    *   **La Solution (Concept) :** Il faut "séparer" les objets.
-        *   On calcule le **Vecteur de Translation Minimum (MTV)** : C'est le plus petit vecteur par lequel il faut déplacer l'un des objets (ou les deux proportionnellement) pour qu'ils se touchent juste, sans se chevaucher.
-        *   La direction du MTV est généralement opposée à la normale de collision, et sa magnitude est la profondeur de pénétration.
-        *   **Action :** On ajuste la position d'au moins un des objets en utilisant le MTV.
-            *   *Exemple simple : Si une balle de rayon $R$ à la position $x_{balle}$ frappe un mur vertical à $x_{mur}$ et que $x_{balle}-R < x_{mur}$ (pénétration), on repositionne la balle à $x_{balle} = x_{mur} + R$.*
-    *   "Les moteurs physiques ont des algorithmes sophistiqués pour calculer le MTV et résoudre les interpénétrations de manière stable, surtout pour des contacts multiples."
-*   **C. Modification des Vitesses : Le Rebond (Cas Balle contre Mur Immobile) (30 minutes)**
-    *   C'est ici que nous appliquons les principes vus au Bloc 1 (coefficient de restitution) et les lois de Newton.
-    *   **Étapes pour un Rebond Simple sur une Surface Plane (Mur ou Sol) :**
-        1.  **Après la Détection et la Résolution de Pénétration :** Nous avons la vitesse de la balle $\vec{v}_i$ juste avant l'impact (ou du moins, à la fin du pas de temps où la collision a été détectée).
-        2.  **Identifier la Normale à la Surface de Collision ($\hat{n}$) :**
-            *   C'est un vecteur unitaire perpendiculaire à la surface, pointant vers l'extérieur de la surface.
-            *   Pour un sol horizontal en $y=y_{sol}$, $\hat{n} = \begin{pmatrix} 0 \\ 1 \end{pmatrix}$ (si la balle vient d'en haut).
-            *   Pour un mur vertical à $x=x_{mur}$, si la balle vient de la gauche, $\hat{n} = \begin{pmatrix} 1 \\ 0 \end{pmatrix}$. Si elle vient de la droite, $\hat{n} = \begin{pmatrix} -1 \\ 0 \end{pmatrix}$.
-        3.  **Décomposer la Vitesse Incidente $\vec{v}_i$ (Optionnel mais conceptuellement utile) :**
-            *   On peut projeter $\vec{v}_i$ sur la normale $\hat{n}$ pour obtenir la **composante normale de la vitesse** ($v_{i,n} = \vec{v}_i \cdot \hat{n}$).
-            *   Et sur la tangente à la surface pour obtenir la **composante tangentielle de la vitesse** ($v_{i,t}$).
-        4.  **Appliquer la Réponse basée sur le Coefficient de Restitution ($e$) :**
-            *   **Composante Normale de la Vitesse Finale :** La vitesse normale s'inverse et est réduite par $e$.
-                $`v_{f,n} = -e \cdot v_{i,n}`$
-            *   **Composante Tangentielle de la Vitesse Finale :** Si l'on néglige le frottement pendant l'impact avec le mur, la vitesse tangentielle reste généralement inchangée.
-                $`v_{f,t} = v_{i,t}`$
-                (Le frottement, que nous verrons au Bloc 4, affecterait cette composante).
-        5.  **Nouvelle Vitesse Vectorielle ($\vec{v}_f$) :** La nouvelle vitesse de la balle est la recombinaison de $v_{f,n}$ (dans la direction $\hat{n}$) et $v_{f,t}$ (dans la direction tangentielle).
-            *   *Pour un cas simple comme un rebond sur un sol horizontal (normale $\hat{n}=(0,1)$) :*
-                *   $v_{ix} \rightarrow v_{fx} = v_{ix}$ (la composante tangentielle X reste la même)
-                *   $v_{iy} \rightarrow v_{fy} = -e \cdot v_{iy}$ (la composante normale Y s'inverse et est réduite)
-*   **D. Démonstration Interactive : Amélioration de Votre Exemple de Balle (20 minutes)**
-    *   Nous allons reprendre votre simulation de balle qui rebondit et y ajouter des murs pour former une boîte fermée.
-    *   **Ensemble, nous allons (ou vous observerez) :**
-        1.  **Définir les limites de la boîte** (par des variables : $x_{min}, x_{max}, y_{min}, y_{max}$). Vous pouvez ajouter des lignes visuelles dans Three.js pour ces limites.
-        2.  **Implémenter la Détection Balle-Mur :** Dans la boucle de simulation, après avoir mis à jour la position de la balle, ajouter des conditions `if` pour vérifier si la balle a dépassé chaque limite.
-        3.  **Implémenter la Réponse au Rebond pour chaque mur :**
-            *   Repositionner la balle pour résoudre la pénétration.
-            *   Inverser la composante appropriée de la vitesse et la multiplier par un `coefficientRestitution` (que vous pourrez contrôler via `dat.GUI` ou une variable).
-        4.  **Tester avec Différentes Valeurs de `coefficientRestitution` :** Observer comment la balle se comporte (rebonds hauts et vifs pour $e \approx 1$, rebonds mous pour $e$ petit, aucun rebond pour $e=0$).
-    *   "Cette démonstration vous donnera une base solide pour ce que vous aurez à faire dans le Devoir 2."
+    *   "Nous savons maintenant comment détecter si des objets se touchent (Bloc 2). L'étape suivante est de décider comment ils doivent réagir à cet impact. C'est ce qu'on appelle la **réponse à la collision**."
+    *   Le but principal de la réponse à la collision est de :
+        1.  **Empêcher les objets de s'interpénétrer** (ou de corriger l'interpénétration si elle s'est déjà produite).
+        2.  **Modifier les vitesses** des objets d'une manière qui respecte les lois de la physique (conservation de la quantité de mouvement) et le type de collision souhaité (élastique, inélastique, via le coefficient de restitution).
+
+*   **B. Étape 1 de la Réponse : Résolution de l'Interpénétration (25 minutes)**
+    *   **Le Problème de l'Interpénétration :**
+        *   Dans nos simulations, nous avançons par petits pas de temps discrets ($\Delta t$). Il est très fréquent qu'au moment où nous détectons une collision, les objets aient déjà "dépassé" le point exact de contact et se soient légèrement enfoncés l'un dans l'autre.
+        *   Si nous ne corrigeons pas cette interpénétration, les objets peuvent sembler "collés", vibrer étrangement, ou même passer complètement à travers sur les frames suivantes.
+    *   **La Solution Conceptuelle : Repositionnement**
+        *   L'idée est de **repositionner** un ou plusieurs des objets impliqués pour qu'ils se touchent juste tangentiellement, sans se chevaucher.
+        *   Pour cela, on a souvent besoin de connaître :
+            *   La **normale de collision ($\hat{n}$)** : La direction perpendiculaire à la surface de contact au point de collision.
+            *   La **profondeur de pénétration ($p$)**: De combien les objets se chevauchent le long de cette normale.
+        *   **Action :** On déplace un (ou les deux) objet(s) le long de la normale $\hat{n}$ d'une distance égale à $p$.
+            *   *Exemple simple : Une balle de rayon $R$ à la position $y_{balle}$ touche un sol horizontal à $y_{sol}=0$. Si $y_{balle} - R < 0$, il y a pénétration. La profondeur de pénétration est $p = R - y_{balle}$. On repositionne la balle à $y_{balle\_corrigee} = R$ (ou $y_{sol} + R$).*
+        *   "Dans les moteurs physiques, le calcul de la normale et de la profondeur de pénétration pour des formes complexes peut être sophistiqué (souvent un résultat du test SAT ou GJK)."
+        *   "Pour notre Devoir 2 avec des murs alignés sur les axes, la normale et la pénétration seront plus simples à déterminer."
+
+*   **C. Étape 2 de la Réponse : Modification des Vitesses (Le Rebond) (25 minutes)**
+    *   C'est ici que nous utilisons notre connaissance des types de collisions et du coefficient de restitution ($e$) du Bloc 1.
+    *   **Cas d'une Balle (objet A) contre un Mur Immobile et Massif (objet B) :**
+        *   Le mur ne bougera pas significativement, donc sa vitesse avant et après est considérée comme nulle ($\vec{v}_{B,i} = \vec{v}_{B,f} \approx 0$).
+        *   Nous nous concentrons sur le changement de vitesse de la balle ($\vec{v}_{A,i} \rightarrow \vec{v}_{A,f}$).
+        *   **Rappel de la Définition de $e$ pour un rebond sur surface fixe :**
+            $`e = \frac{|v_{A,f,normal}|}{|v_{A,i,normal}|}`$
+            Où $v_{normal}$ est la composante de la vitesse de la balle perpendiculaire à la surface du mur.
+        *   Cela mène à la règle de rebond pour la composante normale :
+            > $`v_{A,f,normal} = -e \cdot v_{A,i,normal}`$
+            Le signe "moins" indique que la direction de la composante normale de la vitesse est inversée.
+        *   **Et la composante tangentielle ?**
+            *   La composante de la vitesse de la balle *parallèle* (tangentielle) à la surface du mur ($v_{A,i,tangentiel}$) est souvent considérée comme **inchangée** si l'on néglige le frottement pendant l'impact :
+                $`v_{A,f,tangentiel} = v_{A,i,tangentiel}`$.
+            *   (Le frottement lors de l'impact, ou le frottement de glissement après, affecterait cette composante tangentielle).
+
+*   **D. Démonstration Interactive : Balle Rebondissante dans une Boîte (20 minutes)**
+    *   **Objectif :** Visualiser la détection et la réponse aux collisions pour une balle avec des murs.
+    *   **Environnement :** Nous allons utiliser un code Three.js simple (similaire à votre exemple de balle balistique, ou une version que je peux vous fournir/construire avec vous).
+    *   **Modifications à apporter (en direct ou sur un code préparé) :**
+        1.  **Définir les Limites de la Boîte :** Créer des variables pour $x_{min}, x_{max}, y_{min}$ (sol), $y_{max}$ (plafond). Dessiner des lignes ou des plans semi-transparents pour visualiser ces limites.
+        2.  **Logique de Détection Balle-Murs :** Dans la boucle `animate` (ou `updateSimulation`), après avoir mis à jour la position de la balle ($pos_x, pos_y$) en fonction de sa vitesse et de la gravité :
+            *   Ajouter des conditions `if` pour chaque mur :
+                *   `if (balle.position.x - balle.rayon < x_min_mur) { /* collision mur gauche */ }`
+                *   `if (balle.position.x + balle.rayon > x_max_mur) { /* collision mur droit */ }`
+                *   `if (balle.position.y - balle.rayon < y_min_sol) { /* collision sol */ }`
+                *   `if (balle.position.y + balle.rayon > y_max_plafond) { /* collision plafond */ }`
+        3.  **Implémenter la Réponse pour Chaque Mur :**
+            *   À l'intérieur de chaque `if` de collision :
+                *   **Résolution de Pénétration (simple) :**
+                    `balle.position.x = x_min_mur + balle.rayon;` (pour le mur gauche)
+                    `balle.position.y = y_min_sol + balle.rayon;` (pour le sol)
+                *   **Modification de la Vitesse :**
+                    `balle.vitesse.x = -coefficientDeRestitution * balle.vitesse.x;` (pour murs verticaux)
+                    `balle.vitesse.y = -coefficientDeRestitution * balle.vitesse.y;` (pour murs horizontaux)
+        4.  **Paramètre `coefficientDeRestitution` :** Ajouter cette variable et la rendre modifiable (par exemple, avec `dat.GUI`).
+        5.  **Lancer et Observer :** Lancer la balle dans la boîte avec une vitesse initiale. Observer les rebonds. Changer la valeur du `coefficientDeRestitution` (de 0 à 1) et voir comment cela affecte le comportement de la balle (hauteur des rebonds, "vivacité").
+    *   Cette démonstration pratique est la meilleure façon de comprendre comment ces concepts s'appliquent.
 
 ---
 
-**BLOC 4 : Introduction au Frottement et Présentation du Devoir 2 (1h30)**
+**BLOC 4 : Introduction au Frottement de Contact et Présentation du Devoir 2 (1h30)**
 
-*   **A. Introduction aux Forces de Frottement (35 minutes)**
-    *   "Nous avons vu comment les balles rebondissent. Mais dans la réalité, une balle qui roule ou glisse sur le sol finit par s'arrêter, même sans heurter de mur. Qu'est-ce qui la ralentit ?"
-    *   **Le Frottement :** Une force qui s'oppose au mouvement relatif (ou à la tendance au mouvement) entre deux surfaces en contact.
-    *   **1. Frottement Statique ($f_s$) (Concept) :**
-        *   La force qui empêche un objet de *commencer* à bouger lorsqu'une force est appliquée.
-        *   Elle s'ajuste jusqu'à une valeur maximale : $f_{s,max} = \mu_s N$.
-            *   $\mu_s$ : Coefficient de frottement statique (dépend des matériaux en contact).
-            *   $N$ : Magnitude de la force normale (la force de support perpendiculaire exercée par la surface).
-        *   Si la force appliquée dépasse $f_{s,max}$, l'objet se met à bouger, et le frottement devient cinétique.
-    *   **2. Frottement Cinétique (ou Dynamique, $f_k$) (Celui qui nous intéresse pour le Devoir 2) :**
-        *   La force qui s'oppose au mouvement d'un objet qui *glisse déjà* sur une surface.
-        *   Sa magnitude est généralement considérée comme constante (ou approximativement constante) et est donnée par :
-            $`f_k = \mu_k N`$
-            *   $\mu_k$ : Coefficient de frottement cinétique. Souvent $\mu_k < \mu_s$.
-            *   $N$ : Magnitude de la force normale.
-        *   **Direction de la Force de Frottement Cinétique :** Toujours **opposée** à la direction du vecteur vitesse de l'objet par rapport à la surface.
-    *   **3. Force Normale ($N$) sur un Plan Horizontal :**
-        *   Si un objet de masse $m$ repose (ou glisse) sur un sol horizontal, et que la seule autre force verticale est la gravité ($\vec{F}_g = m\vec{g}$), alors pour que l'objet ne s'enfonce pas dans le sol ni ne s'envole, la force normale exercée par le sol sur l'objet doit équilibrer la gravité : $N = |\vec{F}_g| = mg$.
-        *   (Si d'autres forces verticales sont présentes, $N$ peut être différent).
-    *   **4. Application à la Balle au Sol pour le Devoir 2 :**
-        *   Lorsque votre balle est en contact avec le sol (sa position $y \approx R_{balle}$) et qu'elle a une vitesse horizontale ($v_x \neq 0$ et/ou $v_z \neq 0$ si en 3D) :
-            *   Une force de frottement cinétique s'opposera à son mouvement horizontal.
-            *   Exemple en 2D pour la composante X : $`F_{frottement,x} = -\mu_k N \cdot \text{signe}(v_x)`$.
-                *   Le terme $\text{signe}(v_x)$ vaut +1 si $v_x > 0$, -1 si $v_x < 0$, et 0 si $v_x=0$. Cela assure que la force s'oppose bien au mouvement.
-            *   Cette force de frottement causera une décélération : $`a_{frottement,x} = F_{frottement,x} / m = -\mu_k (mg) / m \cdot \text{signe}(v_x) = -\mu_k g \cdot \text{signe}(v_x)`$.
-            *   "Vous verrez que cette décélération constante ralentira progressivement la balle jusqu'à l'arrêt."
-*   **B. Démonstration (Optionnelle) : Ajout d'un Frottement Simple (20 minutes)**
-    *   Si le temps le permet, retournez à votre démo de "balle dans une boîte".
-    *   **Ajoutez la logique de frottement :**
-        *   Dans la boucle de simulation, vérifiez si la balle est au sol ( `Math.abs(balle.position.y - balle.rayon) < epsilon` ) ET si `Math.abs(balle.vitesse.x) > epsilon_vitesse`.
-        *   Si oui, appliquez une force de frottement à `balle.vitesse.x` (en fait, une décélération) :
-            ```javascript
-            // const mu_k = 0.1; // Coefficient de frottement
-            // if (balle_est_au_sol && Math.abs(balle.vitesse.x) > 0.01) {
-            //     let frictionForceMagnitude = mu_k * balle.masse * Math.abs(graviteY);
-            //     let accelerationFrictionX = -Math.sign(balle.vitesse.x) * frictionForceMagnitude / balle.masse;
-            //     balle.vitesse.x += accelerationFrictionX * dt;
-            //     // Empêcher la balle de changer de sens à cause du frottement
-            //     if ( (vitesse_x_avant_friction > 0 && balle.vitesse.x < 0) || (vitesse_x_avant_friction < 0 && balle.vitesse.x > 0) ) {
-            //         balle.vitesse.x = 0;
-            //     }
-            // }
-            ```
-    *   Observez comment la balle qui roule/glisse sur le sol finit par s'arrêter.
+*   **A. Au-delà du Rebond : Les Forces de Frottement de Contact (35 minutes)**
+    *   "Lorsque notre balle rebondit sur un mur, nous avons considéré que sa vitesse parallèle au mur ne changeait pas. Mais si le mur est rugueux, ou si la balle glisse sur le sol, il y a une autre force importante : le **frottement**."
+    *   **1. Le Frottement : Une Force qui s'Oppose au Mouvement Relatif**
+        *   Le frottement est une force de contact qui apparaît lorsque deux surfaces tentent de glisser ou glissent l'une par rapport à l'autre.
+        *   Sa direction est toujours **opposée** à la direction du mouvement relatif (ou de la tendance au mouvement).
+    *   **2. Frottement Cinétique (ou Dynamique, $f_k$) :**
+        *   C'est le frottement qui agit lorsqu'un objet **glisse** déjà sur une surface.
+        *   Sa magnitude est généralement approximée par :
+            > $`f_k = \mu_k N`$
+            Où :
+            *   $\mu_k$ (mu-ka) est le **coefficient de frottement cinétique**. C'est un nombre sans dimension qui dépend de la nature des deux surfaces en contact (ex: caoutchouc sur béton, acier sur glace). Des surfaces plus rugueuses ont un $\mu_k$ plus élevé.
+            *   $N$ est la magnitude de la **force normale**. C'est la force de support que la surface exerce sur l'objet, perpendiculairement à la surface.
+        *   **Important :** $f_k$ ne dépend (approximativement) *ni de l'aire de contact, ni de la vitesse relative* (pour des vitesses non extrêmes).
+    *   **3. Calcul de la Force Normale ($N$) (Cas Simple : Sol Horizontal) :**
+        *   Si un objet de masse $m$ est sur un sol horizontal et que les seules forces verticales sont la gravité ($\vec{F}_g$, vers le bas) et la force normale ($\vec{N}$, vers le haut), alors pour que l'objet ne s'enfonce pas ou ne décolle pas, ces forces doivent s'équilibrer : $N - mg = 0$, donc $N = mg$.
+        *   Dans ce cas, la force de frottement cinétique devient : $f_k = \mu_k mg$.
+    *   **4. Appliquer la Force de Frottement dans la Simulation (pour le Devoir 2) :**
+        *   Lorsque votre balle est en contact avec le sol et a une vitesse horizontale ($v_x$ et/ou $v_z$ si en 3D) :
+            *   La force de frottement cinétique agira pour s'opposer à ces composantes de vitesse.
+            *   Par exemple, pour la composante $x$ :
+                $`F_{frottement,x} = -\mu_k N \cdot \text{signe}(v_x)`$
+                Le terme $\text{signe}(v_x)$ (+1 si $v_x > 0$, -1 si $v_x < 0$) assure que la force s'oppose à la direction de $v_x$.
+            *   Cette force de frottement sera ajoutée à la somme des forces ($\vec{F}_{net}$) pour calculer l'accélération de la balle :
+                $`a_x = (\sum F_x \text{ autres} + F_{frottement,x}) / m`$.
+                Causant une décélération constante (si $\mu_k$ et $N$ sont constants) qui arrêtera éventuellement le glissement.
+    *   **5. Frottement Statique ($f_s$) (Concept rapide) :**
+        *   Force qui empêche un objet de commencer à bouger. S'ajuste jusqu'à $f_{s,max} = \mu_s N$. Si la force motrice < $f_{s,max}$, l'objet reste immobile. (Plus complexe à simuler de manière stable, souvent les moteurs utilisent des approximations). Pour le Devoir 2, le frottement cinétique est suffisant.
+
+*   **B. Démonstration (Optionnelle) : Ajout d'un Frottement Simple au Sol (15 minutes)**
+    *   Si vous avez le temps, modifiez votre démo de "balle dans une boîte" :
+    *   **Logique à ajouter :**
+        *   Vérifiez si la balle est au sol ( `Math.abs(balle.position.y - balle.rayon) < epsilon_contact` )
+        *   ET si elle a une vitesse horizontale ( `Math.abs(balle.vitesse.x) > epsilon_vitesse` ).
+        *   Si oui, calculez la force de frottement cinétique opposée à `balle.vitesse.x`.
+        *   Appliquez l'accélération correspondante à `balle.vitesse.x`.
+        *   `// Attention à ce que la balle ne change pas de sens juste à cause du frottement;`
+        *   `// si la vitesse devient très petite, mettez-la à zéro.`
+    *   Ajoutez un paramètre `coefficientFrottementSol` au GUI.
+    *   Observez comment la balle ralentit et s'arrête de glisser sur le sol.
+
+*   **C. Présentation Détaillée du Devoir 2 (30 minutes)**
+    *   **Objectif :** "Votre mission pour le Devoir 2 sera de prendre le template de la sphère balistique (celui du Devoir 1 est une bonne base, ou celui que nous fournirons) et d'y implémenter :
+        1.  Des **murs** formant une boîte de confinement.
+        2.  La **détection de collision** entre la sphère et ces murs.
+        3.  La **réponse aux collisions** avec les murs, en utilisant un **coefficient de restitution** que vous pourrez faire varier.
+        4.  Une **force de frottement cinétique** simple lorsque la sphère est en contact avec le sol et glisse horizontalement."
+    *   **Repasser les Fonctionnalités Minimales Attendues (celles détaillées dans l'énoncé du Devoir 2).**
+    *   **Montrer le Template du Devoir 2 et identifier les sections `// TODO: ÉTUDIANT - ...` où ils devront écrire leur code :**
+        *   La section de détection/réponse aux collisions avec les murs Xmin, Xmax, Ymax, Zmin, Zmax (le Ymin/sol est déjà partiellement là comme exemple).
+        *   La section de calcul et d'application de la force de frottement au sol.
+    *   **Rappeler les Critères d'Évaluation.**
+*   **D. Questions / Réponses sur le Devoir et la Session (10 minutes)**
+    *   Clarifier tout aspect du Devoir 2.
+    *   Répondre aux questions sur les concepts de collision, détection, réponse, et frottement vus aujourd'hui.
+    *   Annoncer la Date de Remise pour le Devoir 2.
+
+---

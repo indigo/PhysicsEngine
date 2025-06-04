@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Devoir 2: Broad Phase avec Grille</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0,0,0,0.5);
+            padding: 5px;
+            font-family: monospace;
+            z-index: 100; /* Pour être sûr qu'il est au-dessus du canvas */
+        }
+    </style>
+</head>
+<body>
+    <div id="stats">
+        Palets: <span id="numPalets">0</span><br>
+        Narrow Tests: <span id="narrowTests">0</span><br>
+        Brute Force Tests: <span id="bruteForceTests">0</span><br>
+        Ratio: <span id="testRatio">0.00</span>%
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'jsm/controls/OrbitControls.js';
+
+        let camera, scene, renderer;
+        let clock = new THREE.Clock();
+        let controls;
+
+        const PALET_THICKNESS = 0.05;
+        const PLAY_AREA_WIDTH = 10; 
+        const PLAY_AREA_DEPTH = 12; 
+
+        const simParams = {
+            numTriangleRows: 3, 
+            paletFixedMass: 0.1,
+            restitutionPalet: 0.8,
+            restitutionWall: 0.5,
+            kineticFriction: 0.05,
+            launchForce: 10.0,
+            gridCellSizeFactor: 4.0,
+            showGridVisualizer: false,
+            timeScale: 1.0,
+            showTrails: false,
+            resetSimulation: function() { resetSimulation(); },
+        };
+
+        let palets = [];
+        let paletRadius; 
+
+        let narrowPhaseChecks = 0; // Variable globale pour le compteur
+
+        let grid = {};
+        let numGridCols, numGridRows, actualGridCellSize;
+        let gridHelperMesh;
+
+        init();
+        setupDatGUI();
+
+        function calculatePaletRadius() {
+            const totalPaletsEstimate = 1 + (simParams.numTriangleRows * (simParams.numTriangleRows + 1) / 2);
+            paletRadius = Math.max(0.05, PLAY_AREA_WIDTH / (totalPaletsEstimate * 1.5 + 15)); 
+        }
+
+        function createPalet(id, colorHex, initialPosition, initialVelocity) {
+            const palet = {};
+            palet.id = id;
+            palet.radius = paletRadius;
+            palet.color = colorHex;
+            
+            const geom = new THREE.CylinderGeometry(palet.radius, palet.radius, PALET_THICKNESS, 16);
+            const mat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.3, roughness: 0.6 });
+            palet.mesh = new THREE.Mesh(geom, mat);
+            palet.mesh.castShadow = true;
+            palet.mesh.receiveShadow = true;
+            //11palet.mesh.rotation.x = Math.PI / 2; 
+            palet.mesh.position.set(initialPosition.x, PALET_THICKNESS / 2, initialPosition.y);
+            scene.add(palet.mesh);
+
+            palet.pos = initialPosition.clone();
+            palet.vel = initialVelocity.clone();
+            palet.mass = simParams.paletFixedMass;
+
+            const trailMat = new THREE.LineBasicMaterial({ color: new THREE.Color(colorHex).offsetHSL(0, 0.3, 0.1) });
+            const trailGeom = new THREE.BufferGeometry();
+            palet.trailLine = new THREE.Line(trailGeom, trailMat);
+            palet.trailPoints = [];
+            scene.add(palet.trailLine);
+            palet.trailLine.visible = simParams.showTrails;
+
+            return palet;
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x283747); 
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, PLAY_AREA_DEPTH, PLAY_AREA_DEPTH * 0.8); 
+            camera.lookAt(0, 0, 0);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 7);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 1024;
+            directionalLight.shadow.mapSize.height = 1024;
+            scene.add(directionalLight);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+            renderer.setAnimationLoop(animate);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target = new THREE.Vector3(0, 0, 0);
+            controls.enableDamping = true;
+
+            createTable();
+            resetSimulation(); 
+
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', handleKeyDown);
+            console.log("Broad Phase Demo: ESPACE/R pour Reset. 1,2,3 pour Lancer.");
+        }
+        
+        function createTable() {
+            const tableMaterial = new THREE.MeshStandardMaterial({ color: 0x004D40, metalness:0.1, roughness:0.7 });
+            const tableGeometry = new THREE.BoxGeometry(PLAY_AREA_WIDTH, PALET_THICKNESS, PLAY_AREA_DEPTH);
+            const tableMesh = new THREE.Mesh(tableGeometry, tableMaterial);
+            tableMesh.position.y = -PALET_THICKNESS / 2;
+            tableMesh.receiveShadow = true;
+            scene.add(tableMesh);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function handleKeyDown(event) {
+            if (event.code === 'Space' || event.code === 'KeyR') {
+                resetSimulation();
+            }
+            if (event.code === 'Digit1') { launchPlayerPalet(-0.25); } // Angle un peu plus prononcé
+            if (event.code === 'Digit2') { launchPlayerPalet(0); }
+            if (event.code === 'Digit3') { launchPlayerPalet(0.25); }
+        }
+
+        function initGrid() {
+            actualGridCellSize = paletRadius * simParams.gridCellSizeFactor;
+            if (actualGridCellSize <= 0.01) actualGridCellSize = 0.01; // Sécurité minimale
+            numGridCols = Math.max(1, Math.ceil(PLAY_AREA_WIDTH / actualGridCellSize));
+            numGridRows = Math.max(1, Math.ceil(PLAY_AREA_DEPTH / actualGridCellSize));
+            if (simParams.showGridVisualizer) createGridVisualizer();
+            else if (gridHelperMesh) scene.remove(gridHelperMesh);
+        }
+
+        function clearGrid() { grid = {}; }
+
+        function getGridCellKey(x, y) {
+            const col = Math.floor((x + PLAY_AREA_WIDTH / 2) / actualGridCellSize);
+            const row = Math.floor((y + PLAY_AREA_DEPTH / 2) / actualGridCellSize);
+            return `${col}_${row}`;
+        }
+
+        function populateGrid() {
+            palets.forEach(palet => {
+                const r = palet.radius;
+                const minX = palet.pos.x - r; const maxX = palet.pos.x + r;
+                const minY = palet.pos.y - r; const maxY = palet.pos.y + r;
+                const startCol = Math.max(0, Math.min(numGridCols - 1, Math.floor((minX + PLAY_AREA_WIDTH / 2) / actualGridCellSize)));
+                const endCol   = Math.max(0, Math.min(numGridCols - 1, Math.floor((maxX + PLAY_AREA_WIDTH / 2) / actualGridCellSize)));
+                const startRow = Math.max(0, Math.min(numGridRows - 1, Math.floor((minY + PLAY_AREA_DEPTH / 2) / actualGridCellSize)));
+                const endRow   = Math.max(0, Math.min(numGridRows - 1, Math.floor((maxY + PLAY_AREA_DEPTH / 2) / actualGridCellSize)));
+                for (let row = startRow; row <= endRow; row++) {
+                    for (let col = startCol; col <= endCol; col++) {
+                        const key = `${col}_${row}`;
+                        if (!grid[key]) grid[key] = [];
+                        if (!grid[key].includes(palet)) grid[key].push(palet);
+                    }
+                }
+            });
+        }
+        
+        function createGridVisualizer() {
+             if (gridHelperMesh) scene.remove(gridHelperMesh);
+            const material = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1 });
+            const points = [];
+            for (let i = 0; i <= numGridCols; i++) {
+                const x = -PLAY_AREA_WIDTH / 2 + i * actualGridCellSize;
+                points.push(new THREE.Vector3(x, 0.01, -PLAY_AREA_DEPTH / 2));
+                points.push(new THREE.Vector3(x, 0.01, PLAY_AREA_DEPTH / 2));
+            }
+            for (let i = 0; i <= numGridRows; i++) {
+                const y = -PLAY_AREA_DEPTH / 2 + i * actualGridCellSize;
+                points.push(new THREE.Vector3(-PLAY_AREA_WIDTH / 2, 0.01, y));
+                points.push(new THREE.Vector3(PLAY_AREA_WIDTH / 2, 0.01, y));
+            }
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            gridHelperMesh = new THREE.LineSegments(geometry, material);
+            gridHelperMesh.visible = simParams.showGridVisualizer;
+            scene.add(gridHelperMesh);
+        }
+
+        function resetSimulation() {
+            palets.forEach(p => {
+                scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose();
+                scene.remove(p.trailLine); p.trailLine.geometry.dispose(); p.trailLine.material.dispose();
+            });
+            palets = [];
+            calculatePaletRadius(); 
+            initGrid(); 
+            const playerPos = new THREE.Vector2(0, -PLAY_AREA_DEPTH / 2 + paletRadius + 0.5);
+            const player = createPalet('player', 0xffffff, playerPos, new THREE.Vector2(0,0));
+            palets.push(player);
+            const targetColors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0xf0f0f0, 0x800080, 0x008000, 0x800000, 0xfa8072, 0x7fffd4, 0xd2691e, 0xff7f50, 0x6495ed];
+            const R = paletRadius;
+            const spacingFactor = 2.02; 
+            let paletIndex = 0;
+            const triangleTipZ = PLAY_AREA_DEPTH * 0.1; 
+            for (let row = 0; row < simParams.numTriangleRows; row++) {
+                const numInRow = row + 1;
+                const rowWidth = (numInRow - 1) * (R * spacingFactor);
+                const startX = -rowWidth / 2;
+                const currentZ = triangleTipZ + row * (R * spacingFactor * Math.sqrt(3)/2);
+                for (let i = 0; i < numInRow; i++) {
+                    const targetPos = new THREE.Vector2(startX + i * (R * spacingFactor), currentZ);
+                    const target = createPalet(`target_${paletIndex++}`, targetColors[paletIndex % targetColors.length], targetPos, new THREE.Vector2(0,0));
+                    palets.push(target);
+                }
+            }
+            palets.forEach(p => {
+                p.trailPoints = [new THREE.Vector3(p.pos.x, PALET_THICKNESS / 2, p.pos.y)];
+                if (p.trailLine) p.trailLine.geometry.setFromPoints(p.trailPoints);
+            });
+        }
+
+        function launchPlayerPalet(aimOffsetX = 0) {
+            const playerPalet = palets.find(p => p.id === 'player');
+            if (playerPalet && playerPalet.vel.lengthSq() < 0.001) {
+                const launchDirection = new THREE.Vector2(aimOffsetX, 1); 
+                if (launchDirection.lengthSq() === 0) { return; }
+                launchDirection.normalize();
+                const impulseMagnitude = simParams.launchForce / playerPalet.mass;
+                const velocityChangeX = launchDirection.x * impulseMagnitude;
+                const velocityChangeY = launchDirection.y * impulseMagnitude;
+                if (isNaN(velocityChangeX) || isNaN(velocityChangeY)) { return; }
+                playerPalet.vel.set(velocityChangeX, velocityChangeY);
+            }
+        }
+
+        function updatePhysics(dt) {
+        if (dt <= 0) return;
+
+        clearGrid();
+        populateGrid();
+
+        palets.forEach(palet => {
+            // Mouvement et Frottement (FOURNI)
+            if (palet.vel.lengthSq() > 0.00001) {
+                const frictionDeceleration = simParams.kineticFriction; 
+                let dvFrictionMag = frictionDeceleration * dt;
+                if (palet.vel.lengthSq() < dvFrictionMag * dvFrictionMag) {
+                    palet.vel.set(0,0);
+                } else {
+                    let oppositeDir = palet.vel.clone().normalize().multiplyScalar(-1);
+                    palet.vel.addScaledVector(oppositeDir, dvFrictionMag);
+                }
+            }
+            palet.pos.addScaledVector(palet.vel, dt);
+        });
+
+        // narrowPhaseChecks est réinitialisé dans animate()
+
+        for (const cellKey in grid) {
+            const cellPalets = grid[cellKey];
+            if (cellPalets.length > 1) {
+                for (let i = 0; i < cellPalets.length; i++) {
+                    for (let j = i + 1; j < cellPalets.length; j++) {
+                        narrowPhaseChecks++; 
+                        const p1 = cellPalets[i]; 
+                        const p2 = cellPalets[j];
+                        
+                        // TODO ÉTUDIANT 1: DÉTECTION DE COLLISION CERCLE-CERCLE
+                        // Écrivez votre code ici
+                        // Exemple de début:
+                        // let separationVector = new THREE.Vector2().subVectors(p2.pos, p1.pos);
+                        // const distSq = separationVector.lengthSq();
+                        // const sumRadii = p1.radius + p2.radius;
+
+                        // if (/* Votre condition de collision ici: par exemple, distSq < sumRadii * sumRadii && distSq > 0.000001 */) {
+                            // Collision détectée entre p1 et p2
+
+                            // TODO ÉTUDIANT 2: PRÉPARATION POUR LA RÉPONSE
+                            // Écrivez votre code ici
+                            // Exemple:
+                            // const dist = Math.sqrt(distSq);
+                            // const collisionNormalVec2 = separationVector.divideScalar(dist); // separationVector est maintenant la normale
+
+                            // TODO ÉTUDIANT 3: RÉSOLUTION DE L'INTERPÉNÉTRATION (MTV)
+                            // Écrivez votre code ici
+                            // Exemple:
+                            // const penetrationDepth = sumRadii - dist;
+                            // if (penetrationDepth > 0) {
+                            //    // ... calculs de push1, push2 ...
+                            //    // p1.pos.addScaledVector(collisionNormalVec2, -push1 * 1.01);
+                            //    // p2.pos.addScaledVector(collisionNormalVec2, push2 * 1.01);
+                            // }
+
+                            // TODO ÉTUDIANT 4: CALCUL DES NOUVELLES VITESSES (RÉPONSE IMPULSIONNELLE)
+                            // Écrivez votre code ici
+                            // Exemple:
+                            // const v1n_scalar = p1.vel.dot(collisionNormalVec2);
+                            // const v2n_scalar = p2.vel.dot(collisionNormalVec2);
+                            // const relativeNormalVelocity = v2n_scalar - v1n_scalar;
+                            // if (relativeNormalVelocity < 0) { // Ils s'approchent
+                            //    // ... calculs de new_v1n_scalar, new_v2n_scalar, delta_v1n, delta_v2n ...
+                            //    // p1.vel.addScaledVector(collisionNormalVec2, delta_v1n);
+                            //    // p2.vel.addScaledVector(collisionNormalVec2, delta_v2n);
+                            // }
+                        // } // Fin du if (collision détectée)
+                    }
+                }
+            }
+        }
+
+            palets.forEach(palet => {
+                const restitution = simParams.restitutionWall;
+                if (palet.pos.x - palet.radius < -PLAY_AREA_WIDTH / 2) {
+                    palet.pos.x = -PLAY_AREA_WIDTH / 2 + palet.radius;
+                    if (palet.vel.x < 0) palet.vel.x *= -restitution;
+                }
+                if (palet.pos.x + palet.radius > PLAY_AREA_WIDTH / 2) {
+                    palet.pos.x = PLAY_AREA_WIDTH / 2 - palet.radius;
+                    if (palet.vel.x > 0) palet.vel.x *= -restitution;
+                }
+                if (palet.pos.y - palet.radius < -PLAY_AREA_DEPTH / 2) {
+                    palet.pos.y = -PLAY_AREA_DEPTH / 2 + palet.radius;
+                    if (palet.vel.y < 0) palet.vel.y *= -restitution;
+                }
+                if (palet.pos.y + palet.radius > PLAY_AREA_DEPTH / 2) {
+                    palet.pos.y = PLAY_AREA_DEPTH / 2 - palet.radius;
+                    if (palet.vel.y > 0) palet.vel.y *= -restitution;
+                }
+            });
+        }
+
+        const MAX_TRAIL_POINTS = 50;
+
+        function animate() {
+            const numSubSteps = 3; 
+
+            let dt = clock.getDelta(); 
+            const max_dt = 0.02; 
+            const effective_dt = Math.min(dt, max_dt) * simParams.timeScale;
+            
+            const subDt = effective_dt / numSubSteps;
+            
+            narrowPhaseChecks = 0; // Réinitialiser le compteur avant les sous-pas de physique
+
+            for(let i = 0; i < numSubSteps; i++) {
+                updatePhysics(subDt); 
+            }
+            
+            palets.forEach(palet => {
+                if (palet.mesh) {
+                    palet.mesh.position.set(palet.pos.x, PALET_THICKNESS / 2, palet.pos.y);
+                }
+                if (simParams.showTrails && palet.trailLine) {
+                    palet.trailPoints.push(new THREE.Vector3(palet.pos.x, PALET_THICKNESS / 2, palet.pos.y));
+                    if (palet.trailPoints.length > MAX_TRAIL_POINTS) palet.trailPoints.shift();
+                    if (palet.trailPoints.length > 1) palet.trailLine.geometry.setFromPoints(palet.trailPoints);
+                }
+                if(palet.trailLine) palet.trailLine.visible = simParams.showTrails;
+            });
+            
+            const N = palets.length;
+            document.getElementById('numPalets').textContent = N;
+            document.getElementById('narrowTests').textContent = narrowPhaseChecks;
+            const bruteForcePossibleTests = (N * (N - 1)) / 2;
+            document.getElementById('bruteForceTests').textContent = bruteForcePossibleTests.toFixed(0);
+            const ratio = bruteForcePossibleTests > 0 ? (narrowPhaseChecks / bruteForcePossibleTests) * 100 : 0;
+            document.getElementById('testRatio').textContent = ratio.toFixed(2);
+
+            if(controls) controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function setupDatGUI() {
+            const gui = new dat.GUI();
+            gui.add(simParams, 'resetSimulation').name("Reset (SPACE/R)");
+            gui.add(simParams, 'timeScale', 0.1, 2.0, 0.05).name('Sim Speed');
+            
+            const gameParamsFolder = gui.addFolder('Game Parameters');
+            gameParamsFolder.add(simParams, 'numTriangleRows', 1, 10, 1).name('# Triangle Rows').onChange(resetSimulation);
+            gameParamsFolder.add(simParams, 'launchForce', 5.0, 25.0, 0.5).name('Launch Force');
+            gameParamsFolder.open();
+
+            const physicsFolder = gui.addFolder('Physics');
+            physicsFolder.add(simParams, 'restitutionPalet', 0.5, 1, 0.01).name('e (Palet-Palet)');
+            physicsFolder.add(simParams, 'restitutionWall', 0.2, 0.8, 0.01).name('e (Palet-Mur)');
+            physicsFolder.add(simParams, 'kineticFriction', 0.01, 0.2, 0.005).name('Friction');
+            physicsFolder.add(simParams, 'paletFixedMass', 0.01, 0.5, 0.005).name('Palet Mass').onChange(resetSimulation);
+            physicsFolder.open();
+            
+            const gridFolder = gui.addFolder('Grid (Broad Phase)');
+            gridFolder.add(simParams, 'gridCellSizeFactor', 1.5, 10.0, 0.1).name('Cell Size Factor (xRadius)').onChange(() => {
+                calculatePaletRadius(); 
+                initGrid(); 
+                // Pas besoin de resetSimulation() complet ici, juste recréer la grille visuelle si elle est affichée
+                if (simParams.showGridVisualizer) createGridVisualizer(); 
+            });
+            gridFolder.add(simParams, 'showGridVisualizer').name('Show Grid').onChange((value) => {
+                if (value && !gridHelperMesh) { // Si on veut montrer et qu'elle n'existe pas
+                    if (typeof numGridCols === 'undefined') { // S'assurer que la grille est initialisée
+                        calculatePaletRadius();
+                        initGrid();
+                    }
+                    createGridVisualizer();
+                }
+                if (gridHelperMesh) gridHelperMesh.visible = value;
+            });
+            gridFolder.open();
+
+            gui.add(simParams, 'showTrails').name('Show Trails');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Devoir 1: Simulation Lanceur Rotatif</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'jsm/controls/OrbitControls.js';
+
+        let camera, scene, renderer;
+        let clock = new THREE.Clock();
+        let controls;
+
+        // Visual Objects
+        let pivotMesh, armPivotGroup, armMesh, projectileMesh;
+        let projectileTrailLine;
+        let projectileTrailPoints = [];
+        const MAX_TRAIL_POINTS = 300;
+
+        // Simulation Parameters
+        const simParams = {
+            armLength: 1.5,
+            armMass: 0.5,
+            momentOfInertiaArmSystem: 0, // Calculated
+            initialArmAngle: 0,          // Radians, arm horizontal along X+
+            appliedTorqueToArm: 0.0,     // Nm, can be +/-
+            angularDamping: 0.1,        // Damping for arm rotation
+
+            projectileMass: 0.05,
+            projectileRadius: 0.08,
+
+            gravityY: -9.81,             // m/s^2
+            timeScale: 1.0,              // Simulation speed factor
+
+            simulationPhase: 'swinging_arm', // Initial phase
+            
+            resetSimulation: function() { resetSimulationState(); },
+            launchProjectile: function() { tryLaunchProjectile(); }
+        };
+
+        // Physics State Variables
+        let currentArmAngle = simParams.initialArmAngle;
+        let currentArmAngularVelocity = 0;
+        let projectilePosition = new THREE.Vector3(); // World position for projectile
+        let projectileVelocity = new THREE.Vector3(); // World velocity for projectile
+        let isProjectileAttachedToArm = true;
+
+        init();
+        setupDatGUI();
+
+        function calculateArmInertiaSystem() {
+            const M_arm = simParams.armMass;
+            const L_arm = simParams.armLength;
+            const m_proj = simParams.projectileMass;
+            let I_arm_pivot_end = (1/3) * M_arm * Math.pow(L_arm, 2);
+            let I_proj_at_tip = 0;
+
+            if (isProjectileAttachedToArm) {
+                I_proj_at_tip = m_proj * Math.pow(L_arm, 2);
+            }
+            
+            simParams.momentOfInertiaArmSystem = I_arm_pivot_end + I_proj_at_tip;
+
+            if (simParams.momentOfInertiaArmSystem <= 0.00001) { // Prevent division by zero
+                simParams.momentOfInertiaArmSystem = 0.00001;
+            }
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xd0e0f0); // Light blue background
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 1.5, 5); // Positioned for a good view of the 2D action
+            camera.lookAt(0, 1, 0);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(3, 5, 2);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 1024;
+            directionalLight.shadow.mapSize.height = 1024;
+            scene.add(directionalLight);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target = new THREE.Vector3(0, simParams.armLength * 0.4, 0); // Target near the arm's motion
+            controls.enablePan = true;
+            controls.minDistance = 2;
+            controls.maxDistance = 20;
+            controls.update();
+
+            createVisualElements(); // Create meshes
+            resetSimulationState(); // Set initial physical and visual states
+
+            renderer.setAnimationLoop(animate);
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', handleKeyDown);
+            displayInstructions();
+        }
+        
+        function displayInstructions() {
+            console.clear();
+            console.log("--- Simulation Lanceur Rotatif (Devoir 1) ---");
+            console.log("Contrôles:");
+            console.log("  ESPACE : Lancer le projectile");
+            console.log("  R      : Réinitialiser la simulation");
+            console.log("Utilisez le panneau GUI pour ajuster les paramètres.");
+            console.log("---------------------------------------------");
+        }
+
+        function handleKeyDown(event) {
+            if (event.code === 'Space') {
+                tryLaunchProjectile();
+            }
+            if (event.code === 'KeyR') {
+                resetSimulationState();
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createVisualElements() {
+            // Floor
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x778899, side: THREE.DoubleSide, metalness:0.1, roughness:0.9 
+            });
+            const floorTexture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/grid.png', (texture) => {
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(40, 40);
+                floorMaterial.map = texture;
+                floorMaterial.needsUpdate = true;
+            });
+            const floorGeometry = new THREE.PlaneGeometry(20, 20);
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Pivot
+            if (pivotMesh) scene.remove(pivotMesh);
+            const pivotMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.2 });
+            const pivotGeom = new THREE.CylinderGeometry(0.06, 0.06, 0.3, 12);
+            pivotMesh = new THREE.Mesh(pivotGeom, pivotMat);
+            pivotMesh.rotation.x = Math.PI / 2;
+            pivotMesh.castShadow = true;
+            pivotMesh.receiveShadow = true;
+            scene.add(pivotMesh);
+
+            // Arm Pivot Group (for rotation)
+            if (armPivotGroup) scene.remove(armPivotGroup);
+            armPivotGroup = new THREE.Group();
+            scene.add(armPivotGroup); // Positioned at world origin by default
+
+            // Arm Mesh
+            const armMat = new THREE.MeshStandardMaterial({ color: 0x964B00, metalness:0.2, roughness:0.8 });
+            const armGeom = new THREE.BoxGeometry(simParams.armLength, 0.1, 0.1);
+            if (armMesh) armPivotGroup.remove(armMesh);
+            armMesh = new THREE.Mesh(armGeom, armMat);
+            armMesh.castShadow = true;
+            armMesh.receiveShadow = true;
+            armMesh.position.x = simParams.armLength / 2; // Offset so one end is at the group's origin
+            armPivotGroup.add(armMesh);
+
+            // Projectile Mesh
+            if (projectileMesh) {
+                if(projectileMesh.parent) projectileMesh.parent.remove(projectileMesh);
+            }
+            const projMat = new THREE.MeshStandardMaterial({ color: 0xCC3333, metalness:0.4, roughness:0.5 });
+            const projGeom = new THREE.SphereGeometry(simParams.projectileRadius, 16, 12);
+            projectileMesh = new THREE.Mesh(projGeom, projMat);
+            projectileMesh.castShadow = true;
+            projectileMesh.receiveShadow = true;
+            armPivotGroup.add(projectileMesh); // Initially a child of the arm's pivot group
+
+            // Projectile Trail
+            if (projectileTrailLine) {
+                scene.remove(projectileTrailLine);
+                if (projectileTrailLine.geometry) projectileTrailLine.geometry.dispose();
+                if (projectileTrailLine.material) projectileTrailLine.material.dispose();
+            }
+            const trailMat = new THREE.LineBasicMaterial({ color: 0x0066CC, linewidth: 2.5 });
+            const trailGeom = new THREE.BufferGeometry().setFromPoints([]);
+            projectileTrailLine = new THREE.Line(trailGeom, trailMat);
+            scene.add(projectileTrailLine);
+        }
+
+        function resetSimulationState() {
+            isProjectileAttachedToArm = true;
+            // Ensure projectile is re-parented to arm group if it was detached
+            if (projectileMesh && projectileMesh.parent !== armPivotGroup) {
+                if(projectileMesh.parent) projectileMesh.parent.remove(projectileMesh);
+                armPivotGroup.add(projectileMesh);
+            }
+            calculateArmInertiaSystem();
+
+            currentArmAngle = simParams.initialArmAngle;
+            currentArmAngularVelocity = 0;
+            
+            // Projectile is child of armPivotGroup, position it locally at the arm's tip
+            if(projectileMesh) projectileMesh.position.set(simParams.armLength, 0, 0); 
+
+            // Initialize world projectilePosition for trail start
+            if(projectileMesh) projectileMesh.getWorldPosition(projectilePosition);
+            projectileVelocity.set(0, 0, 0);
+
+            simParams.simulationPhase = 'swinging_arm'; // Start directly in swinging phase
+
+            projectileTrailPoints = [projectilePosition.clone()];
+            if (projectileTrailLine) projectileTrailLine.geometry.setFromPoints(projectileTrailPoints);
+
+            if(armPivotGroup) armPivotGroup.rotation.z = currentArmAngle;
+            // console.log("Simulation Reset.");
+        }
+
+        function tryLaunchProjectile() {
+            if (simParams.simulationPhase === 'swinging_arm' && isProjectileAttachedToArm) {
+                const tangentSpeed = simParams.armLength * currentArmAngularVelocity;
+                
+                // Calculate initial world velocity of the projectile
+                projectileVelocity.x = tangentSpeed * Math.cos(currentArmAngle + Math.PI / 2);
+                projectileVelocity.y = tangentSpeed * Math.sin(currentArmAngle + Math.PI / 2);
+                projectileVelocity.z = 0;
+
+                // Get current world position of projectile and re-parent it to the scene
+                projectileMesh.getWorldPosition(projectilePosition);
+                scene.add(projectileMesh); 
+                projectileMesh.position.copy(projectilePosition); 
+                
+                isProjectileAttachedToArm = false;
+                // Note: If the arm's dynamics were still important after launch,
+                // we would call calculateArmInertiaSystem() here again.
+                
+                simParams.simulationPhase = 'projectile_flying';
+                projectileTrailPoints = [projectilePosition.clone()]; // Start new trail
+                console.log("Projectile Launched!");
+            } else if (!isProjectileAttachedToArm) {
+                console.log("Projectile has already been launched.");
+            } else {
+                console.log("Arm is not in the correct phase to launch or projectile not attached.");
+            }
+        }
+
+        function updateSimulation(dt) {
+            if (dt <= 0.00001) return; // Ignore negligible or invalid dt
+            if (simParams.simulationPhase === 'done') return;
+
+            // --- Arm Rotation Phase ---
+            if (simParams.simulationPhase === 'swinging_arm') {
+                let netTorqueY = simParams.appliedTorqueToArm;
+                netTorqueY -= simParams.angularDamping * currentArmAngularVelocity; // Apply damping
+                
+                let angularAcceleration = 0; 
+                if (simParams.momentOfInertiaArmSystem > 0.00001) { 
+                    angularAcceleration = netTorqueY / simParams.momentOfInertiaArmSystem;
+                }
+
+                currentArmAngularVelocity += angularAcceleration * dt;
+                currentArmAngle += currentArmAngularVelocity * dt; 
+
+                if(armPivotGroup) armPivotGroup.rotation.z = currentArmAngle;
+
+                // If projectile is attached, its local position on the arm is fixed.
+                // Its world position is implicitly updated by the armPivotGroup's transform.
+                // We update the global 'projectilePosition' variable if needed (e.g., for an early trail or GUI display).
+                if (isProjectileAttachedToArm && projectileMesh) {
+                     projectileMesh.position.set(simParams.armLength, 0, 0); // Keep it at the tip, locally
+                     // For precise trail start if launching this frame:
+                     // projectileMesh.getWorldPosition(projectilePosition); 
+                }
+            }
+
+            // --- Projectile Flying Phase ---
+            if (simParams.simulationPhase === 'projectile_flying') {
+                let forceNetProjectileX = 0;
+                let forceNetProjectileY = simParams.projectileMass * simParams.gravityY;
+                
+                // (Optional: Add air resistance here)
+                // const dragCoeff = 0.01;
+                // if (projectileVelocity.lengthSq() > 0.001) {
+                //     forceNetProjectileX -= dragCoeff * projectileVelocity.x * Math.abs(projectileVelocity.x);
+                //     forceNetProjectileY -= dragCoeff * projectileVelocity.y * Math.abs(projectileVelocity.y);
+                // }
+
+
+                let accelerationProjectileX = 0;
+                let accelerationProjectileY = 0;
+                if (simParams.projectileMass > 0.00001) { 
+                    accelerationProjectileX = forceNetProjectileX / simParams.projectileMass;
+                    accelerationProjectileY = forceNetProjectileY / simParams.projectileMass;
+                }
+
+                projectileVelocity.x += accelerationProjectileX * dt;
+                projectileVelocity.y += accelerationProjectileY * dt;
+                
+                // projectilePosition is already in world coordinates
+                projectilePosition.x += projectileVelocity.x * dt; // Euler explicit for pos from vel
+                projectilePosition.y += projectileVelocity.y * dt; // More stable: use new velocity for pos (semi-implicit)
+
+                if(projectileMesh) projectileMesh.position.copy(projectilePosition);
+
+                // Update trail
+                if (projectileTrailPoints.length >= MAX_TRAIL_POINTS) {
+                    projectileTrailPoints.shift();
+                }
+                projectileTrailPoints.push(projectilePosition.clone());
+                if (projectileTrailLine && projectileTrailPoints.length > 1) {
+                     projectileTrailLine.geometry.setFromPoints(projectileTrailPoints);
+                }
+
+                // Check for ground collision
+                const groundY = 0.0; // Assuming floor is at y=0
+                if (projectilePosition.y - simParams.projectileRadius < groundY) { 
+                    projectilePosition.y = groundY + simParams.projectileRadius; // Place it on the ground
+                    projectileVelocity.set(0,0,0); // Stop it (or add bounce logic)
+                    if(projectileMesh) projectileMesh.position.copy(projectilePosition);
+                    simParams.simulationPhase = 'done';
+                    console.log("Projectile has landed at x =", projectilePosition.x.toFixed(2), "m.");
+                }
+            }
+        }
+
+        function animate() {
+            let dt = clock.getDelta(); 
+            const max_dt = 0.033; // Cap dt to prevent large jumps (approx 30fps physics minimum)
+            
+            updateSimulation(Math.min(dt, max_dt) * simParams.timeScale); 
+            
+            if(controls) controls.update(); // Update orbit controls
+            renderer.render(scene, camera);
+        }
+
+        function setupDatGUI() {
+            const gui = new dat.GUI();
+            const launchControls = gui.addFolder('Launch Controls');
+            launchControls.add(simParams, 'launchProjectile').name("Launch Ball (SPACE)");
+            launchControls.add(simParams, 'resetSimulation').name("Reset All (R)");
+            launchControls.open();
+
+            const armFolder = gui.addFolder('Arm Configuration');
+            armFolder.add(simParams, 'armLength', 0.5, 3.0, 0.1).name('Length (m)')
+                .onChange(() => { createVisualElements(); resetSimulationState(); });
+            armFolder.add(simParams, 'armMass', 0.1, 2.0, 0.05).name('Mass (kg)')
+                .onChange(resetSimulationState);
+            armFolder.add(simParams, 'initialArmAngle', -Math.PI, Math.PI, 0.01).name('Initial Angle (rad)')
+                .onChange(resetSimulationState);
+            armFolder.open();
+
+            const launchPowerFolder = gui.addFolder('Arm Power & Damping');
+            launchPowerFolder.add(simParams, 'appliedTorqueToArm', -1.0, 1.0, 0.01).name('Applied Torque (Nm)');
+            launchPowerFolder.add(simParams, 'angularDamping', 0, 1.0, 0.005).name('Angular Damping');
+            launchPowerFolder.open();
+            
+            const projectileFolder = gui.addFolder('Projectile');
+            projectileFolder.add(simParams, 'projectileMass', 0.01, 0.5, 0.005).name('Mass (kg)')
+                .onChange(resetSimulationState); // Recalculates I_sys
+            projectileFolder.add(simParams, 'projectileRadius', 0.02, 0.2, 0.005).name('Radius (m)')
+                .onChange(() => { createVisualElements(); resetSimulationState(); }); // Recreate visuals and reset
+            projectileFolder.open();
+
+            const worldFolder = gui.addFolder('World & Simulation');
+            worldFolder.add(simParams, 'gravityY', -20.0, 0.0, 0.1).name('Gravity Y (m/s²)');
+            worldFolder.add(simParams, 'timeScale', 0.1, 3.0, 0.05).name('Simulation Speed');
+            worldFolder.open();
+        }
+
+    </script>
+</body>
+</html>
