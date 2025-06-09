@@ -1,5 +1,11 @@
+# Dependencies
 three.js/
-images/.DS_Store
-.DS_Store
+
+# System Files
+**/.DS_Store
+
+# Solution files
 devoirs/devoir_02_solution.html
-.DS_Store
+
+# Student submissions
+devoirs/remises/Devoir_1_-_Simulation_Manuelle_dun_203J28BB_00426/
