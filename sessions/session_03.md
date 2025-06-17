@@ -36,9 +36,13 @@
 **Bloc 2 : Impulsions et Quantité de Mouvement**
 
 *   **Comprendre l'Impact Instantané : Impulsion et Quantité de Mouvement :**
-    *   **Quantité de Mouvement ($\vec{p} = m \vec{v}$) :**
-        *   Mesure de "l'élan" ou de la "difficulté à arrêter" un objet en mouvement.
-        *   Dépend de la masse ($m$) et de la vitesse ($\vec{v}$) de l'objet.
+    *   **Quantité de Mouvement**
+
+         ###    $\vec{p} = m \vec{v}$
+        
+    *   Mesure de "l'élan" ou de la "difficulté à arrêter" un objet en mouvement.
+    *   Dépend de la masse ($m$) et de la vitesse ($\vec{v}$) de l'objet.
+    
     *   **Impulsion ($\vec{J}$) :**
         *   Décrit un changement brusque de mouvement dû à une force agissant pendant un court instant (ex: un coup, une explosion).
         *   Peut être vue comme $\vec{J} = \vec{F}_{moy} \Delta t$ (force moyenne pendant une courte durée) ou plus formellement $\vec{J} = \int \vec{F} dt$.

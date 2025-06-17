@@ -1,6 +1,6 @@
 Notre temps de référence est le temps écoulé entre une frame et la suivante.
 
-c'est le temps le plus petit possible pour afficher une image au joueur.
+C'est le temps le plus petit possible pour afficher une image au joueur.
 
 Si entre 2 frames, un point se déplace de 2 vers la droite alors on a:
 

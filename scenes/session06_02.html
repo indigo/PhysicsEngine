@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Démo: Palet sur Plan Incliné</title>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        Angle Plan: <span id="planeAngleDisplay">0.00</span>°<br>
+        Force Gravité (//): <span id="gravityForceDisplay">0.00</span> N<br>
+        Frottement: <span id="frictionForceDisplay">0.00</span> N (<span id="frictionTypeDisplay">Statique</span>)<br>
+        Force Nette (//): <span id="netForceDisplay">0.00</span> N<br>
+        Vitesse (//): <span id="velocityDisplay">0.00</span> m/s<br>
+        Position (//): <span id="positionDisplay">0.00</span> m
+    </div>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'jsm/controls/OrbitControls.js';
+
+        let camera, scene, renderer;
+        let clock = new THREE.Clock();
+        let controls;
+
+        const PALET_RADIUS = 0.2;
+        const PALET_THICKNESS = 0.1;
+        const PLANE_WIDTH = 5;  // Width of the ramp
+        const PLANE_DEPTH = 4; // Length of the ramp (along the slope)
+
+        const simParams = {
+            planeAngleDegrees: 0,
+            paletMass: 1.0,
+            staticFrictionCoeff: 0.5,
+            kineticFrictionCoeff: 0.3,
+            gravity: 9.81,
+            timeScale: 1.0,
+            resetSimulation: function() { resetSimulation(); }
+        };
+
+        let paletMesh, planeMesh;
+        // paletPosOnPlane: 0 is center of plane's length. Negative is up, Positive is down.
+        let paletPosOnPlane = 0;
+        let paletVelOnPlane = 0;
+        let isSliding = false;
+
+        init();
+        setupDatGUI();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x405560);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            // Adjusted camera for better side view of the ramp
+            camera.position.set(PLANE_WIDTH * 0.8, PLANE_DEPTH * 0.3, PLANE_WIDTH * 0.8);
+            camera.lookAt(0, 0, 0);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            directionalLight.position.set(3, 5, 4);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 1024;
+            directionalLight.shadow.mapSize.height = 1024;
+             // Define shadow camera frustum for better shadow quality on the plane
+            directionalLight.shadow.camera.left = -PLANE_WIDTH;
+            directionalLight.shadow.camera.right = PLANE_WIDTH;
+            directionalLight.shadow.camera.top = PLANE_DEPTH;
+            directionalLight.shadow.camera.bottom = -PLANE_DEPTH;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 20;
+            scene.add(directionalLight);
+            // const shadowHelper = new THREE.CameraHelper(directionalLight.shadow.camera);
+            // scene.add(shadowHelper);
+
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+            renderer.setAnimationLoop(animate);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target = new THREE.Vector3(0, 0, 0);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.1;
+
+            createVisuals();
+            resetSimulation();
+
+            window.addEventListener('resize', onWindowResize);
+            displayInstructions();
+        }
+
+        function displayInstructions(){
+            console.clear();
+            console.log("--- Démo: Palet sur Plan Incliné ---");
+            console.log("Utilisez Dat.GUI pour changer l'angle du plan et les coefficients de frottement.");
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createVisuals() {
+            // Plan Incliné
+            const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x607D8B, metalness:0.1, roughness:0.9 });
+            new THREE.TextureLoader().load('https://threejs.org/examples/textures/grid.png', function (texture) {
+                texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(PLANE_WIDTH, PLANE_DEPTH); // Adjust repeat based on new dimensions
+                planeMaterial.map = texture; planeMaterial.needsUpdate = true;
+            });
+            const planeGeometry = new THREE.BoxGeometry(PLANE_WIDTH, 0.05, PLANE_DEPTH); // Thin plane
+            if (planeMesh) scene.remove(planeMesh);
+            planeMesh = new THREE.Mesh(planeGeometry, planeMaterial);
+            planeMesh.receiveShadow = true;
+            scene.add(planeMesh);
+
+            // Palet
+            const paletGeom = new THREE.CylinderGeometry(PALET_RADIUS, PALET_RADIUS, PALET_THICKNESS, 32);
+            paletGeom.rotateX(Math.PI / 2); // Pre-rotate cylinder to lay flat
+            const paletMat = new THREE.MeshStandardMaterial({ color: 0xff8f00, metalness: 0.3, roughness: 0.5 });
+            if (paletMesh) scene.remove(paletMesh);
+            paletMesh = new THREE.Mesh(paletGeom, paletMat);
+            paletMesh.castShadow = true;
+            scene.add(paletMesh);
+        }
+
+        function resetSimulation() {
+            // Start the palet at the top-center of the ramp's length
+            paletPosOnPlane = -PLANE_DEPTH / 2 + PALET_RADIUS + 0.01; // Small offset to be fully on plane
+            paletVelOnPlane = 0;
+            isSliding = false;
+
+            // Update visuals and GUI immediately
+            updatePlaneAndPaletTransform();
+            document.getElementById('planeAngleDisplay').textContent = simParams.planeAngleDegrees.toFixed(2);
+            document.getElementById('gravityForceDisplay').textContent = "0.00";
+            document.getElementById('frictionForceDisplay').textContent = "0.00";
+            document.getElementById('frictionTypeDisplay').textContent = "Statique";
+            document.getElementById('netForceDisplay').textContent = "0.00";
+            document.getElementById('velocityDisplay').textContent = "0.00";
+            document.getElementById('positionDisplay').textContent = paletPosOnPlane.toFixed(2);
+        }
+
+        function updatePlaneAndPaletTransform() {
+            if (!planeMesh || !paletMesh) return;
+
+            const angleRad = THREE.MathUtils.degToRad(simParams.planeAngleDegrees);
+
+            // Set plane rotation and position
+            // The plane's origin (0,0,0) is its center.
+            planeMesh.rotation.set(0, 0, 0); // Reset rotation
+            planeMesh.position.set(0, 0, 0); // Reset position
+            planeMesh.updateMatrixWorld(true); // Ensure matrixWorld is up-to-date before using it
+
+            planeMesh.rotation.x = -angleRad; // Rotate around global X-axis
+            planeMesh.updateMatrixWorld(true); // Update matrixWorld after rotation
+
+            // Palet's local position ON the plane's surface
+            // X is 0 (centered width-wise)
+            // Y is just above the plane's surface (PALET_RADIUS because cylinder origin is at its center)
+            // Z is paletPosOnPlane (along the slope)
+            const localPaletPos = new THREE.Vector3(
+                0,
+                PALET_RADIUS, // Palet center is PALET_RADIUS above the surface it rests on
+                paletPosOnPlane
+            );
+
+            // Transform this local position to world coordinates
+            paletMesh.position.copy(localPaletPos).applyMatrix4(planeMesh.matrixWorld);
+
+            // Orient the palet (cylinder) to be flat on the slope
+            // The cylinder's default orientation has its circular faces on XY plane, height along Z.
+            // We want its circular faces to be parallel to the plane's surface.
+            // So, its local Y-axis should align with the world's Y-axis IF the plane was flat.
+            // If the plane is rotated by -angleRad around X, the palet should also be.
+            // However, a cylinder geometry in Three.js by default stands on its circular base (height along Y).
+            // So, to make it "lie down" along the plane's Z, we first rotate it PI/2 around its local X or Z.
+            // Then apply the plane's rotation.
+
+            paletMesh.rotation.set(0,0,0); // Reset palet rotation
+            // Apply the plane's world rotation to the palet
+            paletMesh.quaternion.setFromRotationMatrix(planeMesh.matrixWorld);
+            // Then, if the cylinder is naturally standing up, rotate it to lie flat
+            paletMesh.rotateX(Math.PI/2); // Make it lie flat relative to its new orientation
+
+            document.getElementById('planeAngleDisplay').textContent = simParams.planeAngleDegrees.toFixed(2);
+        }
+
+
+        function updatePhysics(dt) {
+            if (dt <= 0) return;
+
+            const angleRad = THREE.MathUtils.degToRad(simParams.planeAngleDegrees);
+            const sinTheta = Math.sin(angleRad);
+            const cosTheta = Math.cos(angleRad);
+
+            const weightMagnitude = simParams.paletMass * simParams.gravity;
+            const normalForceMagnitude = weightMagnitude * cosTheta;
+            const forceGravityAlongSlope = weightMagnitude * sinTheta; // Positive = tends to move down the slope
+
+            let frictionForce = 0; // This will be the force value, positive if opposing downward motion
+            let netForceAlongSlope = 0;
+            let currentFrictionType = "Statique";
+
+            if (!isSliding) {
+                const maxStaticFrictionMagnitude = simParams.staticFrictionCoeff * normalForceMagnitude;
+                if (Math.abs(forceGravityAlongSlope) <= maxStaticFrictionMagnitude + 0.0001) { // Epsilon for stability
+                    // Static friction holds, palet is stationary
+                    frictionForce = -forceGravityAlongSlope; // Opposes the tendency to move
+                    paletVelOnPlane = 0;
+                    netForceAlongSlope = 0; // forceGravityAlongSlope + frictionForce
+                } else {
+                    // Static friction overcome, starts sliding
+                    isSliding = true;
+                    currentFrictionType = "Cinétique (départ)";
+                    // Kinetic friction opposes the direction of impending motion (gravity component)
+                    frictionForce = -Math.sign(forceGravityAlongSlope) * simParams.kineticFrictionCoeff * normalForceMagnitude;
+                    netForceAlongSlope = forceGravityAlongSlope + frictionForce;
+                }
+            }
+
+            if (isSliding) { // This block will execute if it just started sliding or was already sliding
+                currentFrictionType = "Cinétique";
+                // Kinetic friction opposes current velocity
+                if (Math.abs(paletVelOnPlane) > 0.001) { // If moving
+                    frictionForce = -Math.sign(paletVelOnPlane) * simParams.kineticFrictionCoeff * normalForceMagnitude;
+                } else { // Velocity is very small, check if it should stop
+                    const maxStaticFrictionMagnitude = simParams.staticFrictionCoeff * normalForceMagnitude;
+                    if (Math.abs(forceGravityAlongSlope) <= maxStaticFrictionMagnitude + 0.0001) {
+                        isSliding = false; // Static friction can now hold it
+                        currentFrictionType = "Statique (arrêt)";
+                        frictionForce = -forceGravityAlongSlope;
+                        paletVelOnPlane = 0;
+                        netForceAlongSlope = 0;
+                    } else {
+                        // Still sliding, or should start sliding if it was momentarily at v=0 but Fg > Fs_max
+                        // This case covers if it was pushed up and is falling back, or just starting.
+                        frictionForce = -Math.sign(forceGravityAlongSlope) * simParams.kineticFrictionCoeff * normalForceMagnitude;
+                         // ^ If velocity is ~0, but Fg_slope is large, friction opposes Fg_slope
+                         if (Math.abs(paletVelOnPlane) <= 0.001 && Math.abs(forceGravityAlongSlope) > 0.001) {
+                            // If it's "at rest" but should be moving due to gravity, friction opposes gravity.
+                         } else if (Math.abs(paletVelOnPlane) > 0.001) {
+                            // If it is moving, friction opposes velocity.
+                             frictionForce = -Math.sign(paletVelOnPlane) * simParams.kineticFrictionCoeff * normalForceMagnitude;
+                         }
+
+                    }
+                }
+                netForceAlongSlope = forceGravityAlongSlope + frictionForce;
+            }
+
+            const accelerationAlongSlope = netForceAlongSlope / simParams.paletMass;
+            paletVelOnPlane += accelerationAlongSlope * dt;
+            paletPosOnPlane += paletVelOnPlane * dt;
+
+            // Boundary checks for the palet on the plane
+            const topBoundary = -PLANE_DEPTH / 2 + PALET_RADIUS;
+            const bottomBoundary = PLANE_DEPTH / 2 - PALET_RADIUS;
+
+            if (paletPosOnPlane < topBoundary) {
+                paletPosOnPlane = topBoundary;
+                if (paletVelOnPlane < 0) paletVelOnPlane *= -0.3; // Soft bounce
+            }
+            if (paletPosOnPlane > bottomBoundary) {
+                paletPosOnPlane = bottomBoundary;
+                if (paletVelOnPlane > 0) paletVelOnPlane *= -0.3; // Soft bounce
+            }
+
+            // Update GUI
+            document.getElementById('gravityForceDisplay').textContent = forceGravityAlongSlope.toFixed(2);
+            document.getElementById('frictionForceDisplay').textContent = frictionForce.toFixed(2);
+            document.getElementById('frictionTypeDisplay').textContent = currentFrictionType;
+            document.getElementById('netForceDisplay').textContent = netForceAlongSlope.toFixed(2);
+            document.getElementById('velocityDisplay').textContent = paletVelOnPlane.toFixed(2);
+            document.getElementById('positionDisplay').textContent = paletPosOnPlane.toFixed(2);
+        }
+
+        function animate() {
+            let dt = clock.getDelta();
+            const effective_dt = Math.min(dt, 0.033) * simParams.timeScale; // Cap dt and apply timeScale
+
+            if (effective_dt > 0) { // Only update if time has passed
+                 updatePhysics(effective_dt);
+            }
+            updatePlaneAndPaletTransform(); // Always update visuals
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function setupDatGUI() {
+            const gui = new dat.GUI();
+            gui.add(simParams, 'resetSimulation').name("Reset Palet");
+            gui.add(simParams, 'timeScale', 0.1, 3.0, 0.05).name('Vitesse Simulation');
+
+            const physicsFolder = gui.addFolder('Paramètres Plan Incliné');
+            physicsFolder.add(simParams, 'planeAngleDegrees', 0, 60, 0.1) // Max 60 degrees
+                .name('Angle Plan (°)')
+                .onChange(resetSimulation); // Reset on change to see immediate static effect
+            physicsFolder.add(simParams, 'paletMass', 0.1, 5.0, 0.1).name('Masse Palet (kg)');
+            physicsFolder.add(simParams, 'staticFrictionCoeff', 0.0, 1.2, 0.01).name('μ Statique'); // Allow 0
+            physicsFolder.add(simParams, 'kineticFrictionCoeff', 0.0, 1.0, 0.01).name('μ Cinétique'); // Allow 0
+            physicsFolder.add(simParams, 'gravity', 0.1, 20.0, 0.1).name('Gravité (m/s²)');
+            physicsFolder.open();
+        }
+    </script>
+</body>
+</html>

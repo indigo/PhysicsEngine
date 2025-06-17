@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bloc 3: Introduction à Rapier.js - Balle Tombante</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../three.js/build/three.module.js", 
+                "jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'jsm/controls/OrbitControls.js';
+
+        let RAPIER;
+
+        let camera, scene, renderer;
+        let clock = new THREE.Clock(); // Toujours utile, même si Rapier a son propre step
+        let controls;
+
+        let groundMesh_three;
+        let dynamicBoxMesh_three;
+
+        let world_rapier;
+        let dynamicBoxBody_rapier;
+        let dynamicBoxCollider_rapier; // Garder une référence si on veut modifier ses propriétés
+        let groundCollider_rapier;   // Idem pour le sol
+
+        const simParams = {
+            timeScale: 1.0, // Sera utilisé pour le dt de Three.js, pas directement pour Rapier.step() par défaut
+            gravityY: -9.81,
+            boxSize: 0.5,
+            boxInitialY: 3.0,
+            boxMass: 1.0,
+            boxRestitution: 0.7,
+            groundY: -2.0,
+            groundSizeX: 10.0,
+            groundSizeZ: 10.0,
+            groundRestitution: 0.5,
+            resetSimulation: function() { resetSimulation(); } // Fonction pour le bouton GUI
+        };
+
+        async function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x667788);
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, simParams.boxInitialY / 2 + simParams.groundY / 2, 8); // Ajuster la caméra initiale
+            camera.lookAt(0, (simParams.boxInitialY + simParams.groundY) / 2, 0); // Regarder vers le milieu de l'action
+
+            const ambient = new THREE.HemisphereLight(0xffffff, 0x888888, 1.0);
+            scene.add(ambient);
+            const light = new THREE.DirectionalLight(0xffffff, 0.8);
+            light.position.set(3, 5, 4);
+            light.castShadow = true;
+            scene.add(light);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target = new THREE.Vector3(0, (simParams.boxInitialY + simParams.groundY) / 2, 0);
+
+
+            try {
+                const rapierModule = await import('https://cdn.skypack.dev/@dimforge/rapier2d-compat');
+                RAPIER = rapierModule.default;
+                await RAPIER.init();
+                console.log("Rapier.js chargé et initialisé.");
+
+                setupDatGUI(); // Initialiser Dat.GUI après le chargement de Rapier
+                createPhysicsWorld_rapier();
+                createVisuals_three(); // Appeler après la physique pour utiliser les tailles/positions
+                resetPhysicsState(); // Mettre les corps Rapier à leur position initiale
+
+                renderer.setAnimationLoop(animate);
+
+            } catch (e) {
+                console.error("Erreur lors du chargement ou de l'initialisation de Rapier.js:", e);
+                document.body.innerHTML = "Impossible de charger la simulation physique. Erreur : " + e.message;
+                return;
+            }
+
+            window.addEventListener('resize', onWindowResize, false);
+            displayInstructions();
+        }
+
+        function displayInstructions(){
+            console.log("--- Démo: Introduction à Rapier.js ---");
+            console.log("Un cube dynamique tombe sur un sol statique.");
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createPhysicsWorld_rapier() {
+            if (!RAPIER) return;
+
+
+            let gravity = { x: 0.0, y: simParams.gravityY };
+            world_rapier = new RAPIER.World(gravity);
+
+            // Sol Rapier
+            let groundColliderDesc = RAPIER.ColliderDesc.cuboid(simParams.groundSizeX / 2, 0.1)
+                .setTranslation(0.0, simParams.groundY - 0.1)
+                .setRestitution(simParams.groundRestitution);
+            groundCollider_rapier = world_rapier.createCollider(groundColliderDesc);
+
+            // Boîte Dynamique Rapier
+            let rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic(); // La position sera définie dans resetPhysicsState
+            dynamicBoxBody_rapier = world_rapier.createRigidBody(rigidBodyDesc);
+
+            let colliderDesc = RAPIER.ColliderDesc.cuboid(simParams.boxSize, simParams.boxSize)
+                .setRestitution(simParams.boxRestitution)
+                .setMass(simParams.boxMass);
+            dynamicBoxCollider_rapier = world_rapier.createCollider(colliderDesc, dynamicBoxBody_rapier);
+        }
+
+        function resetPhysicsState() {
+            if (!dynamicBoxBody_rapier) return;
+
+            // Réinitialiser la position et la vitesse du corps dynamique
+            dynamicBoxBody_rapier.setTranslation({ x: 0.0, y: simParams.boxInitialY }, true);
+            dynamicBoxBody_rapier.setLinvel({ x: 0.0, y: 0.0 }, true);
+            dynamicBoxBody_rapier.setAngvel(0.0, true); // Vitesse angulaire à 0 aussi
+            dynamicBoxBody_rapier.wakeUp(); // S'assurer que le corps est actif
+
+            // Mettre à jour les propriétés des colliders si elles ont changé via Dat.GUI
+            if (dynamicBoxCollider_rapier) {
+                dynamicBoxCollider_rapier.setRestitution(simParams.boxRestitution);
+                dynamicBoxCollider_rapier.setMass(simParams.boxMass); // Remarque: changer la masse d'un collider après création peut avoir des effets complexes sur l'inertie globale du corps si plusieurs colliders. Ici c'est simple.
+            }
+            if (groundCollider_rapier) {
+                groundCollider_rapier.setRestitution(simParams.groundRestitution);
+            }
+
+            // Mettre à jour la gravité du monde si elle a changé
+            world_rapier.gravity.y = simParams.gravityY;
+
+
+            // Mettre à jour la position du mesh Three.js pour correspondre immédiatement
+            if (dynamicBoxMesh_three) {
+                 const initialPosRapier = dynamicBoxBody_rapier.translation();
+                 dynamicBoxMesh_three.position.set(initialPosRapier.x, initialPosRapier.y, 0);
+                 dynamicBoxMesh_three.rotation.z = 0;
+            }
+        }
+
+
+        function createVisuals_three() {
+            // Sol Three.js
+            if (groundMesh_three) scene.remove(groundMesh_three); // Supprimer l'ancien si on recrée
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x8899aa, metalness:0.2, roughness:0.8 });
+            const floorGeometry = new THREE.PlaneGeometry(simParams.groundSizeX, simParams.groundSizeZ);
+            groundMesh_three = new THREE.Mesh(floorGeometry, floorMaterial);
+            groundMesh_three.rotation.x = -Math.PI / 2;
+            groundMesh_three.position.y = simParams.groundY;
+            groundMesh_three.receiveShadow = true;
+            scene.add(groundMesh_three);
+
+            // Boîte Dynamique Three.js
+            if (dynamicBoxMesh_three) scene.remove(dynamicBoxMesh_three); // Supprimer l'ancien
+            const boxGeom = new THREE.BoxGeometry(simParams.boxSize * 2, simParams.boxSize * 2, simParams.boxSize * 2);
+            const boxMat = new THREE.MeshStandardMaterial({ color: 0xff8844, metalness:0.4, roughness:0.6 });
+            dynamicBoxMesh_three = new THREE.Mesh(boxGeom, boxMat);
+            dynamicBoxMesh_three.castShadow = true;
+            scene.add(dynamicBoxMesh_three);
+        }
+
+        function resetSimulation() {
+            createPhysicsWorld_rapier(); // Recrée le monde avec les nouveaux paramètres de gravité
+            createVisuals_three();    // Recrée les meshes si leur taille a changé
+            resetPhysicsState();      // Réinitialise la position/vitesse de la boîte
+            clock.start();            // Redémarrer l'horloge pour dt
+            console.log("Simulation réinitialisée.");
+        }
+
+
+        function animate() {
+            // let dt_three = clock.getDelta() * simParams.timeScale; // Non utilisé pour Rapier.step() simple
+
+            if (world_rapier && dynamicBoxBody_rapier && dynamicBoxMesh_three) {
+                world_rapier.step(); // Rapier gère son propre dt interne
+
+                let position_rapier = dynamicBoxBody_rapier.translation();
+                let rotation_rapier = dynamicBoxBody_rapier.rotation();
+
+                // console.log("Rapier pos:", position_rapier.x.toFixed(2), position_rapier.y.toFixed(2));
+
+                dynamicBoxMesh_three.position.set(position_rapier.x, position_rapier.y, 0);
+                dynamicBoxMesh_three.rotation.z = rotation_rapier;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function setupDatGUI() {
+            const gui = new dat.GUI();
+            gui.add(simParams, 'resetSimulation').name("Reset Simulation");
+            gui.add(simParams, 'timeScale', 0.1, 2.0, 0.05).name('Time Scale (Visuel)'); // N'affecte pas Rapier.step() directement
+
+            const physicsFolder = gui.addFolder('Physique Rapier');
+            physicsFolder.add(simParams, 'gravityY', -20.0, 0.0, 0.1).name('Gravité Y').onChange(resetSimulation);
+            physicsFolder.add(simParams, 'boxMass', 0.1, 5.0, 0.1).name('Masse Boîte').onChange(resetSimulation); // Changera à la volée via resetPhysicsState
+            physicsFolder.add(simParams, 'boxRestitution', 0.0, 1.0, 0.01).name('Restitution Boîte').onChange(resetSimulation);
+            physicsFolder.add(simParams, 'groundRestitution', 0.0, 1.0, 0.01).name('Restitution Sol').onChange(resetSimulation);
+            physicsFolder.open();
+
+            const sceneSetupFolder = gui.addFolder('Configuration Scène');
+            sceneSetupFolder.add(simParams, 'boxSize', 0.1, 1.0, 0.01).name('Taille Boîte (Demi)').onChange(resetSimulation);
+            sceneSetupFolder.add(simParams, 'boxInitialY', simParams.groundY + simParams.boxSize + 0.1, 5.0, 0.1).name('Pos. Initiale Y Boîte').onChange(resetSimulation);
+            // groundY, groundSizeX, groundSizeZ sont moins interactifs une fois la scène lancée,
+            // mais pourraient être ajoutés si besoin, avec un reset plus complet.
+            sceneSetupFolder.open();
+        }
+
+        // --- Lancement ---
+        init().catch(error => {
+            console.error("Erreur fatale lors de l'initialisation:", error);
+        });
+
+    </script>
+</body>
+</html>

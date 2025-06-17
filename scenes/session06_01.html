@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Démo: Pendule Élastique et Période d'Oscillation</title>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100; /* Pour s'assurer qu'il est au-dessus du canvas */
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        Période Estimée (pics Y) : <span id="estimatedPeriod">N/A</span> s<br>
+        Temps : <span id="currentTime">0.00</span> s
+    </div>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../three.js/build/three.module.js", 
+                "jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'jsm/controls/OrbitControls.js';
+
+        let camera, scene, renderer;
+        let clock = new THREE.Clock();
+        let controls;
+
+        let massMesh, springLine;
+        let attachmentPoint = new THREE.Vector3(0, 2.5, 0); // Point d'attache du ressort (un peu plus haut)
+
+        // Pour le graphe simulé
+        let graphLine, graphLineGeometry, graphLinePositionAttribute;
+        const MAX_GRAPH_POINTS = 500; // Nombre maximum de points pour le tracé du graphe
+        let currentGraphPointIndex = 0;
+        let graphPlane;
+
+        const simParams = {
+            mass: 1.0,
+            springConstantK: 20.0,
+            restLengthL0: 1.0,
+            gravityY: -9.81,
+            dampingFactor: 0.1, // Facteur d'amortissement optionnel
+            initialPosX: 0.5,
+            initialPosY: attachmentPoint.y - 1.5,
+            timeScale: 1.0,
+            showGraph: true,
+            resetSimulation: function() { resetSimulation(); }
+        };
+
+        let pos = new THREE.Vector2();
+        let vel = new THREE.Vector2();
+        let acc = new THREE.Vector2();
+
+        let simulationTime = 0;
+        let lastPeakTime = -1;
+        let previousY = 0;
+        let peakTimes = [];
+
+        init();
+        setupDatGUI();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x333344);
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 1.5, 6); // Un peu plus loin pour mieux voir le graphe aussi
+            camera.lookAt(0, 1.5, 0);
+
+            const ambient = new THREE.HemisphereLight(0xffffff, 0x888888, 1.2);
+            scene.add(ambient);
+            const light = new THREE.DirectionalLight(0xffffff, 0.8);
+            light.position.set(5, 10, 7.5);
+            light.castShadow = true; // Activer les ombres pour la lumière
+            scene.add(light);
+
+            // Configurer les ombres pour le renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true; // Activer les ombres dans le renderer
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Type d'ombre plus douce
+            document.body.appendChild(renderer.domElement);
+            renderer.setAnimationLoop(animate);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target = new THREE.Vector3(0, 1.5, 0);
+            controls.update();
+
+            createVisuals();
+            resetSimulation();
+
+            window.addEventListener('resize', onWindowResize, false);
+            displayInstructions();
+        }
+
+        function displayInstructions(){
+            console.clear();
+            console.log("--- Démo: Pendule Élastique ---");
+            console.log("Observe l'oscillation et le tracé de la position Y en fonction du temps.");
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createVisuals() {
+            // Point d'attache
+            const attachmentGeom = new THREE.SphereGeometry(0.05, 16, 16);
+            const attachmentMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+            const attachmentMesh = new THREE.Mesh(attachmentGeom, attachmentMat);
+            attachmentMesh.position.copy(attachmentPoint);
+            scene.add(attachmentMesh);
+
+            // Masse
+            const massGeom = new THREE.SphereGeometry(0.15, 32, 32);
+            const massMat = new THREE.MeshStandardMaterial({ color: 0xff6600, metalness:0.3, roughness:0.5 });
+            if (massMesh) scene.remove(massMesh);
+            massMesh = new THREE.Mesh(massGeom, massMat);
+            massMesh.castShadow = true; // La masse projette une ombre
+            scene.add(massMesh);
+
+            // Ressort
+            if (springLine) { scene.remove(springLine); springLine.geometry.dispose(); springLine.material.dispose(); }
+            const springMat = new THREE.LineBasicMaterial({ color: 0x00ff00 }); // Linewidth a peu d'effet
+            const springGeom = new THREE.BufferGeometry();
+            const springPositions = new Float32Array(2 * 3); // 2 points, 3 coordonnées par point
+            springGeom.setAttribute('position', new THREE.BufferAttribute(springPositions, 3));
+            springLine = new THREE.Line(springGeom, springMat);
+            scene.add(springLine);
+            // Initialiser les positions du ressort
+            const pAtt = springLine.geometry.attributes.position.array;
+            pAtt[0] = attachmentPoint.x; pAtt[1] = attachmentPoint.y; pAtt[2] = attachmentPoint.z;
+            pAtt[3] = attachmentPoint.x; pAtt[4] = attachmentPoint.y - simParams.restLengthL0; pAtt[5] = 0; // Position initiale
+            springLine.geometry.attributes.position.needsUpdate = true;
+
+
+            // Graphe simulé
+            if (graphLine) { scene.remove(graphLine); graphLine.geometry.dispose(); graphLine.material.dispose(); }
+            graphLineGeometry = new THREE.BufferGeometry();
+            const graphPositions = new Float32Array(MAX_GRAPH_POINTS * 3);
+            graphLinePositionAttribute = new THREE.BufferAttribute(graphPositions, 3);
+            graphLinePositionAttribute.setUsage(THREE.DynamicDrawUsage); // Important pour les mises à jour fréquentes
+            graphLineGeometry.setAttribute('position', graphLinePositionAttribute);
+            
+            const graphMat = new THREE.LineBasicMaterial({ color: 0xffff00 });
+            graphLine = new THREE.Line(graphLineGeometry, graphMat);
+            graphLine.position.set(-3, 0.5, -0.5); // Positionner le graphe (Z un peu en avant du mur)
+            scene.add(graphLine);
+
+            // Mur du fond / Support du graphe
+            if (graphPlane) scene.remove(graphPlane);
+            const planeGeom = new THREE.PlaneGeometry(4.5, 2.5); // Légèrement plus grand que le graphe
+            const textureLoader = new THREE.TextureLoader();
+            const wallTexture = textureLoader.load('https://threejs.org/examples/textures/uv_grid_opengl.jpg', (texture) => { // Une texture de grille Three.js
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(4, 2); // Répéter la texture
+            });
+            const planeMat = new THREE.MeshStandardMaterial({
+                map: wallTexture,
+                side: THREE.DoubleSide,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            graphPlane = new THREE.Mesh(planeGeom, planeMat);
+            graphPlane.position.copy(graphLine.position).add(new THREE.Vector3(2, 1, -0.1));
+            graphPlane.receiveShadow = true; // Le mur peut recevoir des ombres
+            scene.add(graphPlane);
+        }
+
+        function resetSimulation() {
+            pos.set(attachmentPoint.x + simParams.initialPosX, simParams.initialPosY);
+            vel.set(0, 0);
+            acc.set(0,0);
+
+            if (massMesh) massMesh.position.set(pos.x, pos.y, 0);
+            if (springLine) {
+                const positions = springLine.geometry.attributes.position.array;
+                positions[3] = pos.x; positions[4] = pos.y; positions[5] = 0;
+                springLine.geometry.attributes.position.needsUpdate = true;
+            }
+
+            simulationTime = 0;
+            currentGraphPointIndex = 0;
+            // Remplir le buffer du graphe avec des zéros ou des positions hors champ pour éviter les artefacts
+            const positionsArray = graphLinePositionAttribute.array;
+            for (let i = 0; i < MAX_GRAPH_POINTS * 3; i++) {
+                positionsArray[i] = 0; 
+            }
+            graphLinePositionAttribute.needsUpdate = true;
+            graphLineGeometry.setDrawRange(0, 0);
+
+
+            document.getElementById('estimatedPeriod').textContent = 'N/A';
+            document.getElementById('currentTime').textContent = '0.00';
+            lastPeakTime = -1;
+            peakTimes = [];
+            previousY = pos.y;
+        }
+
+        function updatePhysics(dt) {
+            simulationTime += dt;
+
+            // --- Calculer les Forces ---
+            let Fg_y = simParams.mass * simParams.gravityY;
+
+            let springVector = new THREE.Vector2(pos.x - attachmentPoint.x, pos.y - attachmentPoint.y);
+            let currentLength = springVector.length();
+            let Fs_x = 0, Fs_y = 0;
+
+            if (currentLength > 0.0001) {
+                let extension = currentLength - simParams.restLengthL0;
+                let Fs_mag = -simParams.springConstantK * extension;
+                Fs_x = Fs_mag * (springVector.x / currentLength);
+                Fs_y = Fs_mag * (springVector.y / currentLength);
+            }
+            
+            // Force d'amortissement (optionnelle, proportionnelle à la vitesse)
+            let Fd_x = -simParams.dampingFactor * vel.x;
+            let Fd_y = -simParams.dampingFactor * vel.y;
+
+
+            // Force Nette
+            let Fnet_x = Fs_x + Fd_x;
+            let Fnet_y = Fg_y + Fs_y + Fd_y;
+
+            acc.x = Fnet_x / simParams.mass;
+            acc.y = Fnet_y / simParams.mass;
+
+            vel.x += acc.x * dt;
+            vel.y += acc.y * dt;
+            pos.x += vel.x * dt;
+            pos.y += vel.y * dt;
+
+            // Détection de Pic
+            if (vel.y < 0 && previousY - pos.y < 0 && pos.y > attachmentPoint.y - simParams.restLengthL0 - 0.2) {
+                if (lastPeakTime > 0 && simulationTime - lastPeakTime > 0.1) { // Éviter détections multiples rapprochées
+                    let period = simulationTime - lastPeakTime;
+                    if (peakTimes.length >= 5) peakTimes.shift();
+                    peakTimes.push(period);
+                    let avgPeriod = peakTimes.reduce((a, b) => a + b, 0) / peakTimes.length;
+                    document.getElementById('estimatedPeriod').textContent = avgPeriod.toFixed(2);
+                }
+                lastPeakTime = simulationTime;
+            }
+            previousY = pos.y;
+
+            // Mettre à jour le graphe
+            if (simParams.showGraph) {
+                const graphXScale = 0.4; 
+                const graphYScale = 1.0; 
+                const graphYOffset = attachmentPoint.y - 1.0; // Centre autour de la position d'équilibre approx.
+
+                const xPosInGraph = simulationTime * graphXScale;
+                const yPosInGraph = (pos.y - graphYOffset) * graphYScale;
+                
+                const positionsArray = graphLinePositionAttribute.array;
+                
+                // Si on a rempli le buffer, on décale tout vers la gauche
+                if (currentGraphPointIndex >= MAX_GRAPH_POINTS) {
+                    for (let i = 0; i < MAX_GRAPH_POINTS - 1; i++) {
+                        positionsArray[i * 3] = positionsArray[(i + 1) * 3] - (dt * simParams.timeScale * graphXScale); // Décaler en X
+                        positionsArray[i * 3 + 1] = positionsArray[(i + 1) * 3 + 1];
+                        positionsArray[i * 3 + 2] = positionsArray[(i + 1) * 3 + 2];
+                    }
+                    currentGraphPointIndex = MAX_GRAPH_POINTS -1; // Prêt pour le nouveau point
+                }
+                
+                positionsArray[currentGraphPointIndex * 3] = xPosInGraph;
+                positionsArray[currentGraphPointIndex * 3 + 1] = yPosInGraph;
+                positionsArray[currentGraphPointIndex * 3 + 2] = 0; // Graphe en 2D
+                
+                graphLinePositionAttribute.needsUpdate = true;
+                if (currentGraphPointIndex < MAX_GRAPH_POINTS -1 && simulationTime > 0) { // Ne pas incrémenter si on est déjà au max et qu'on décale
+                     graphLineGeometry.setDrawRange(0, currentGraphPointIndex + 1);
+                } else {
+                     graphLineGeometry.setDrawRange(0, MAX_GRAPH_POINTS);
+                }
+                if (simulationTime > 0) currentGraphPointIndex++;
+
+            }
+             graphLine.visible = simParams.showGraph;
+             graphPlane.visible = simParams.showGraph;
+        }
+
+        function animate() {
+            let dt = clock.getDelta();
+            const effective_dt = Math.min(dt, 0.033) * simParams.timeScale;
+
+            updatePhysics(effective_dt);
+
+            if (massMesh) massMesh.position.set(pos.x, pos.y, 0);
+            if (springLine) {
+                const positions = springLine.geometry.attributes.position.array;
+                positions[3] = pos.x; positions[4] = pos.y; positions[5] = 0;
+                springLine.geometry.attributes.position.needsUpdate = true;
+                springLine.geometry.computeBoundingSphere(); // Nécessaire pour la visibilité correcte
+            }
+            document.getElementById('currentTime').textContent = simulationTime.toFixed(2);
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function setupDatGUI() {
+            const gui = new dat.GUI();
+            gui.add(simParams, 'resetSimulation').name("Reset Simulation");
+            gui.add(simParams, 'timeScale', 0.1, 2.0, 0.05).name('Vitesse Simulation');
+            gui.add(simParams, 'showGraph').name("Afficher Graphe");
+
+
+            const physicsFolder = gui.addFolder('Paramètres Physiques');
+            physicsFolder.add(simParams, 'mass', 0.1, 5.0, 0.1).name('Masse (kg)').onChange(resetSimulation);
+            physicsFolder.add(simParams, 'springConstantK', 1.0, 100.0, 1.0).name('Raideur k (N/m)').onChange(resetSimulation);
+            physicsFolder.add(simParams, 'restLengthL0', 0.2, 3.0, 0.1).name('Long. Repos L0 (m)').onChange(resetSimulation);
+            physicsFolder.add(simParams, 'gravityY', -20.0, 0.0, 0.1).name('Gravité Y').onChange(resetSimulation);
+            physicsFolder.add(simParams, 'dampingFactor', 0.0, 2.0, 0.01).name('Amortissement').onChange(resetSimulation);
+
+            physicsFolder.open();
+
+            const initialFolder = gui.addFolder('Conditions Initiales');
+            initialFolder.add(simParams, 'initialPosX', -2.0, 2.0, 0.1).name('Pos Initiale X').onChange(resetSimulation);
+            initialFolder.add(simParams, 'initialPosY', attachmentPoint.y - 3.0, attachmentPoint.y, 0.1).name('Pos Initiale Y').onChange(resetSimulation);
+            initialFolder.open();
+        }
+    </script>
+</body>
+</html>

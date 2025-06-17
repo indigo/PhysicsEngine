@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bloc 3: Introduction à Rapier.js - Balle Tombante</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../three.js/build/three.module.js",
+                "jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <!-- On n'a plus besoin de Dat.GUI pour cet exemple simple pour l'instant -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'jsm/controls/OrbitControls.js';
+
+        let RAPIER; // Sera initialisé avec le module Rapier
+
+        let camera, scene, renderer;
+        let clock = new THREE.Clock();
+        let controls;
+
+        // Meshes Three.js
+        let groundMesh_three;
+        let dynamicBoxMesh_three;
+
+        // Corps Physiques Rapier
+        let world_rapier;
+        let dynamicBoxBody_rapier;
+        // Le sol Rapier n'a pas besoin d'être stocké dans une variable globale
+        // s'il est purement statique et qu'on n'a pas besoin de le manipuler.
+
+        const simParams = {
+            timeScale: 1.0,
+            gravityY: -9.81,
+            boxSize: 0.5, // Demi-taille du cube
+            boxInitialY: 3.0,
+            groundY: -2.0,
+            groundSizeX: 10.0,
+            groundSizeZ: 10.0, // Pour un sol 3D visuel
+            boxRestitution: 0.7,
+            groundRestitution: 0.5,
+            // Pas de resetSimulation via GUI pour l'instant pour simplifier
+        };
+
+        async function init() {
+            // --- Initialisation de Three.js ---
+            // ... (votre code Three.js existant) ...
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x667788);
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, simParams.boxInitialY, 8);
+            camera.lookAt(0, 0, 0);
+
+            const ambient = new THREE.HemisphereLight(0xffffff, 0x888888, 1.0);
+            scene.add(ambient);
+            const light = new THREE.DirectionalLight(0xffffff, 0.8);
+            light.position.set(3, 5, 4);
+            light.castShadow = true;
+            scene.add(light);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+            // Ne pas démarrer la boucle d'animation avant que Rapier soit prêt
+            // renderer.setAnimationLoop(animate); // ON DÉPLACE CET APPEL
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target = new THREE.Vector3(0, 0, 0);
+
+            // --- Initialisation de Rapier.js ---
+            try {
+                // Importer le module
+                const rapierModule = await import('https://cdn.skypack.dev/@dimforge/rapier2d-compat');
+                RAPIER = rapierModule.default; // Accéder à l'export par défaut
+
+                // Initialiser le module WASM et attendre qu'il soit prêt
+                await RAPIER.init();
+
+                console.log("Rapier.js chargé et initialisé.");
+
+                // Maintenant que Rapier est prêt, on peut créer le monde physique et les visuels
+                createPhysicsWorld_rapier();
+                createVisuals_three();
+
+                // Démarrer la boucle d'animation SEULEMENT APRÈS que tout soit initialisé
+                renderer.setAnimationLoop(animate);
+
+
+            } catch (e) {
+                console.error("Erreur lors du chargement ou de l'initialisation de Rapier.js:", e);
+                // Afficher un message d'erreur à l'utilisateur si nécessaire
+                document.body.innerHTML = "Impossible de charger la simulation physique. Erreur : " + e.message;
+                return;
+            }
+
+            window.addEventListener('resize', onWindowResize, false);
+            displayInstructions();
+        }
+
+        function displayInstructions(){
+            console.log("--- Démo: Introduction à Rapier.js ---");
+            console.log("Un cube dynamique (Rapier2D) tombe sur un sol statique (Rapier2D).");
+            console.log("Le mesh Three.js du cube suit la position du corps physique Rapier.");
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createPhysicsWorld_rapier() {
+            if (!RAPIER) {
+                console.error("Rapier n'est pas initialisé !");
+                return;
+            }
+
+            let gravity = { x: 0.0, y: simParams.gravityY }; // Pour Rapier2D
+            // Si Rapier3D : new RAPIER.Vector3(0.0, simParams.gravityY, 0.0);
+            world_rapier = new RAPIER.World(gravity);
+
+            // Créer le Sol (statique) dans Rapier
+            let groundColliderDesc = RAPIER.ColliderDesc.cuboid(simParams.groundSizeX / 2, 0.1) // Demi-largeur, Demi-hauteur
+                .setTranslation(0.0, simParams.groundY - 0.1) // Position du *centre* du collider
+                .setRestitution(simParams.groundRestitution);
+            world_rapier.createCollider(groundColliderDesc); // Pas besoin de RigidBody pour un sol statique simple
+
+            // Créer un corps rigide dynamique (le cube) dans Rapier
+            let rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
+                .setTranslation(0.0, simParams.boxInitialY);
+            dynamicBoxBody_rapier = world_rapier.createRigidBody(rigidBodyDesc);
+
+            // Créer un collider cuboïde attaché au corps rigide dynamique
+            let colliderDesc = RAPIER.ColliderDesc.cuboid(simParams.boxSize, simParams.boxSize) // Demi-largeur, Demi-hauteur
+                .setRestitution(simParams.boxRestitution)
+                .setMass(1.0); // La masse peut être définie ici ou sur le RigidBodyDesc
+            world_rapier.createCollider(colliderDesc, dynamicBoxBody_rapier); // NE PAS Utiliser .handle
+        }
+
+
+        function createVisuals_three() {
+            // Sol Three.js (visuel)
+            // Pour Rapier2D, le sol physique est une ligne fine. On crée un plan 3D pour la visu.
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x8899aa, metalness:0.2, roughness:0.8 });
+            const floorGeometry = new THREE.PlaneGeometry(simParams.groundSizeX, simParams.groundSizeZ); // Largeur, Profondeur pour la vue 3D
+            groundMesh_three = new THREE.Mesh(floorGeometry, floorMaterial);
+            groundMesh_three.rotation.x = -Math.PI / 2; // Orienter à plat
+            groundMesh_three.position.y = simParams.groundY; // Aligner avec le sol physique de Rapier
+            groundMesh_three.receiveShadow = true;
+            scene.add(groundMesh_three);
+
+            // Cube Dynamique Three.js (visuel)
+            // Pour Rapier2D (cuboid), on utilise un BoxGeometry pour Three.js.
+            // La "profondeur" (Z) est juste pour la visualisation 3D.
+            const boxGeom = new THREE.BoxGeometry(simParams.boxSize * 2, simParams.boxSize * 2, simParams.boxSize * 2);
+            const boxMat = new THREE.MeshStandardMaterial({ color: 0xff8844, metalness:0.4, roughness:0.6 });
+            dynamicBoxMesh_three = new THREE.Mesh(boxGeom, boxMat);
+            dynamicBoxMesh_three.castShadow = true;
+            // Position initiale sera mise à jour dans animate() à partir de Rapier
+            scene.add(dynamicBoxMesh_three);
+        }
+
+        // Pas de resetSimulation() complexe pour l'instant, on relance la page pour reseter.
+
+        function animate() {
+            // let dt = clock.getDelta(); // Pas utilisé directement pour world.step() par défaut
+                                      // Rapier.js utilise son propre pas de temps interne (environ 1/60s)
+                                      // Si on voulait un contrôle plus fin, on pourrait utiliser world.step(eventQueue, dt)
+
+            if (world_rapier && dynamicBoxBody_rapier && dynamicBoxMesh_three) {
+                // 1. Avancer la simulation Rapier
+                world_rapier.step();
+                // 2. Récupérer la position et la rotation du corps Rapier
+                let position_rapier = dynamicBoxBody_rapier.translation(); // {x, y} pour Rapier2D
+                let rotation_rapier = dynamicBoxBody_rapier.rotation();   // angle en radians pour Rapier2D
+                console.log("Rapier pos:", position_rapier.x, position_rapier.y);
+                // 3. Mettre à jour le mesh Three.js
+                // Pour Rapier2D, position_rapier.x et position_rapier.y sont mappés sur X et Y de Three.js
+                // La coordonnée Z de Three.js reste 0 pour un effet 2.5D.
+                dynamicBoxMesh_three.position.set(position_rapier.x, position_rapier.y, 0);
+                dynamicBoxMesh_three.rotation.z = rotation_rapier; // Rotation autour de Z pour 2D
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- Lancement ---
+        init().catch(error => {
+            console.error("Erreur fatale lors de l'initialisation:", error);
+        });
+
+    </script></body>
+</html>

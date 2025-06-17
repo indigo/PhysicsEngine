@@ -1,6 +1,6 @@
----
+ 
 **Session 1 : Introduction et Mathématiques Essentielles (4 blocs)**
----
+ 
 
 **Physique dans le Jeu Vidéo - Session 1 : Introduction et Mathématiques Essentielles (avec Rapier)**
 
@@ -8,7 +8,7 @@ Bienvenue ! Ce cours vous plongera dans la physique des jeux vidéo, en utilisan
 
 [![Background image with moving shapes and Rapier logo](../images/intro.png)](../images/intro.png)
 
----
+ 
 
 **Qu'allez-vous apprendre ?**
 
@@ -19,7 +19,7 @@ Bienvenue ! Ce cours vous plongera dans la physique des jeux vidéo, en utilisan
 
 [![Pyramid representing the course structure](../images/pyramide.png)](../images/pyramide.png)
 
----
+ 
 
 **Comment se déroulera le cours ?**
 
@@ -32,7 +32,7 @@ Bienvenue ! Ce cours vous plongera dans la physique des jeux vidéo, en utilisan
 
 [![Calendar showing the course schedule](../images/calendrier.png)](images/course_calendar.png)
 
----
+ 
 
 **La Physique : Bien plus que des explosions !**
 
@@ -44,7 +44,7 @@ La physique dans les jeux vidéo ne se limite pas aux effets spectaculaires. Ell
 
 [![Game screenshots showcasing physics](../images/example_01.png)](../images/example_01.png)
 
----
+ 
 
 **Vecteurs : Le GPS des Objets Virtuels**
 
@@ -52,21 +52,25 @@ Les **vecteurs** sont des outils mathématiques fondamentaux pour décrire des q
 
 - **Les vecteurs :** Définis par leur magnitude (représentée par $|\vec{v}|$) et leur direction (souvent un angle par rapport à un axe de référence).
 - **Décrivent :**
-  - **Position** ($\vec{r}$) : L'emplacement d'un objet dans l'espace.
+  - **Position** ($\vec{r}$) : L'emplacement d'un objet dans l'espace, c'est ce qu'on utilise pour placer nos objets dans les scènes.
   - **Vitesse** ($\vec{v}$) : Le taux de changement de la position au fil du temps, indiquant à quelle vitesse et dans quelle direction un objet se déplace.
   - **Accélération** ($\vec{a}$) : Le taux de changement de la vitesse au fil du temps, indiquant comment la vitesse d'un objet change en magnitude ou en direction.
   - **Force** ($\vec{F}$) : Une interaction qui peut modifier l'état de mouvement d'un objet.
 - **Essentiels pour :** La description mathématique du mouvement, des interactions entre objets et de nombreuses autres notions physiques.
 
 [![2D plane with position and velocity vectors](../images/vectors.png)](../images/vectors.png)
+Dans cet example on a $\vec{a} =  \begin{pmatrix} a_x = 1 \\ a_y = 2 \end{pmatrix}$
 
 - **Références :** Pour une excellente introduction visuelle aux vecteurs et à d'autres concepts mathématiques, consultez la chaîne YouTube 3Blue1Brown : [https://www.youtube.com/@3blue1brown](https://www.youtube.com/@3blue1brown)
 
----
+ 
 
 **Déplacements et Différences Vectorielles**
 
-- **Addition de vecteurs :** $\vec{c} = \vec{a} + \vec{b}$.
+- **Addition de vecteurs :** 
+
+    ## $\vec{c} = \vec{a} + \vec{b}$.
+
 
   - **Méthode tête-bêche :** Placez la queue du vecteur $\vec{b}$ à la tête du vecteur $\vec{a}$. Le vecteur résultant $\vec{c}$ va de la queue de $\vec{a}$ à la tête de $\vec{b}$.
   - **Méthode du parallélogramme :** Placez les queues de $\vec{a}$ et $\vec{b}$ à la même origine. Le vecteur résultant $\vec{c}$ est la diagonale du parallélogramme formé par $\vec{a}$ et $\vec{b}$.
@@ -81,7 +85,7 @@ Les **vecteurs** sont des outils mathématiques fondamentaux pour décrire des q
   - **Déplacer un objet :** Un vecteur de déplacement $\Delta \vec{r}$ représente le changement de position d'un objet. Si un objet est à la position $\vec{r}_1$ et subit un déplacement $\Delta \vec{r}$, sa nouvelle position sera $\vec{r}_2 = \vec{r}_1 + \Delta \vec{r}$.
   - **Trouver la distance et la direction entre deux points :** Si les points A et B ont pour vecteurs position $\vec{r}_A$ et $\vec{r}_B$, le vecteur allant de A à B est $\vec{r}_{AB} = \vec{r}_B - \vec{r}_A$. La magnitude $|\vec{r}_{AB}|$ donne la distance entre A et B, et la direction du vecteur indique la direction de B par rapport à A.
 
----
+ 
 
 **Changer la Magnitude d'un Vecteur : Multiplication Scalaire**
 
@@ -99,7 +103,7 @@ La multiplication d'un vecteur $\vec{a}$ par un scalaire $k$ (un nombre réel) p
 
 [![Scalar multiplication of a vector](../images/dim2.png)](../images/dim2.png)
 
----
+ 
 
 **Le Produit Scalaire (Dot Product)**
 
@@ -134,7 +138,7 @@ où $|\vec{a}|$ et $|\vec{b}|$ sont les magnitudes des vecteurs $\vec{a}$ et $\v
 
 [![Two vectors with an angle θ and projection](../images/dot.png)](../images/dot.png)
 
----
+ 
 
 **Le Produit Vectoriel (Cross Product)**
 
@@ -171,7 +175,7 @@ $
 
 [![Two vectors indicating rotation direction](../images/rotation.png)](images/cross_product_2d.png)
 
----
+ 
 
 **Le Rythme du Mouvement : Vitesse et Accélération**
 
@@ -180,7 +184,7 @@ $
 - **Vitesse** ($\vec{v}(t)$) : Le taux de changement de la position par rapport au temps. C'est la dérivée du vecteur position par rapport au temps :
 
   $
-  \vec{v}(t) = \frac{d\vec{r}(t)}{dt} = \lim\_{\Delta t \to 0} \frac{\vec{r}(t + \Delta t) - \vec{r}(t)}{\Delta t}
+  \vec{v}(t) = \frac{d\vec{r}(t)}{dt} = \lim_{\Delta t \to 0} \frac{\vec{r}(t + \Delta t) - \vec{r}(t)}{\Delta t}
   $
 
   Les unités SI sont le mètre par seconde ($m/s$ ou $m \cdot s^{-1}$). La vitesse est un vecteur, possédant une magnitude (la vitesse scalaire, $|\vec{v}|$) et une direction (la direction du mouvement). La vitesse est la tangente à la trajectoire.
@@ -188,7 +192,7 @@ $
 - **Accélération** ($\vec{a}(t)$) : Le taux de changement de la vitesse par rapport au temps. C'est la dérivée du vecteur vitesse par rapport au temps (ou la seconde dérivée du vecteur position) :
 
   $
-  \vec{a}(t) = \frac{d\vec{v}(t)}{dt} = \lim\_{\Delta t \to 0} \frac{\vec{v}(t + \Delta t) - \vec{v}(t)}{\Delta t} = \frac{d^2\vec{r}(t)}{dt^2}
+  \vec{a}(t) = \frac{d\vec{v}(t)}{dt} = \lim_{\Delta t \to 0} \frac{\vec{v}(t + \Delta t) - \vec{v}(t)}{\Delta t} = \frac{d^2\vec{r}(t)}{dt^2}
   $
 
   Les unités SI sont le mètre par seconde au carré ($m/s^2$ ou $m \cdot s^{-2}$). L'accélération est également un vecteur et indique comment la vitesse (magnitude ou direction) d'un objet change.
@@ -216,27 +220,4 @@ $
 
 [![Curve representing velocity and area under the curve](../images/integration.png)](images/integration.png)
 
----
-
-**Bienvenue dans Rapier ! (dans le navigateur)**
-
-**Rapier** est une bibliothèque de physique 2D et 3D open-source, écrite en Rust, qui se distingue par sa performance et sa facilité d'intégration dans des environnements web grâce à la compilation vers WebAssembly.
-
-- **Présentation du framework :** Rapier fournit des outils pour créer des mondes physiques, définir des corps rigides (objets avec masse et inertie), des colliders (formes physiques pour la détection des collisions), et simuler leurs interactions sous l'effet de forces et de contraintes.
-- **Ressources et documentation :** La documentation officielle de Rapier est une ressource précieuse pour apprendre à utiliser la bibliothèque. Elle contient des guides, des exemples et une référence API complète : [https://rapier.rs/](https://rapier.rs/). Nous explorerons également des exemples spécifiques adaptés au contexte du développement web.
-
-[![Screenshot of the browser](../images/rapier_logo_color_textpath.svg)
-
----
-
-**Votre premier template physique !**
-
-Nous allons maintenant examiner un exemple de code simplifié utilisant Rapier dans un environnement web. Ce code illustrera les étapes de base pour nos projets par la suite.
-
-- **Classes clés de Rapier :**
-  - `RigidBody` : Représente un corps physique qui peut se déplacer et interagir avec d'autres corps. Il possède une masse, une inertie, une position et une orientation.
-  - `Collider` : Définit la forme physique d'un objet, utilisée pour détecter les collisions avec d'autres colliders. Un corps rigide peut avoir un ou plusieurs colliders associés.
-  - `PhysicsWorld` : Le conteneur qui gère tous les corps rigides, les colliders, les forces et la simulation physique. C'est dans ce monde que les lois de la physique sont appliquées.
-- **Structure typique du code (HTML et JavaScript) :** Nous verrons comment initialiser le `PhysicsWorld`, créer un `RigidBody` et un `Collider`, et les ajouter au monde. Nous observerons ensuite comment la simulation met à jour la position de l'objet (par exemple, un carré) sous l'effet de la gravité. (Un extrait de code simplifié sera présenté et expliqué ligne par ligne).
-
-[Physics with Rapier](../physics-with-rapier-and-three/index.html)
+ 
