@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bloc 3: Rapier.js - Démo Fixed Joint (3D)</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "../three.js/build/three.module.js",
+                "jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'jsm/controls/OrbitControls.js';
+
+        let RAPIER;
+
+        let camera, scene, renderer;
+        let clock = new THREE.Clock(); 
+        let controls;
+
+        let groundMesh_three;
+        let dynamicMeshes_three = []; // Tableau pour les maillages Three.js
+        let dynamicBodies_rapier = []; // Tableau pour les RigidBodies de Rapier
+        let dynamicColliders_rapier = []; // Tableau pour les Colliders de Rapier
+
+        let world_rapier;
+        let groundCollider_rapier;
+
+        let debugLines_three;
+        const MAX_DEBUG_VERTICES = 10000; 
+
+        const simParams = {
+            timeScale: 1.0, 
+            gravityY: -9.81,
+            gravityZ: 0.0, 
+            numDynamicObjects: 2, // Limité à 2 pour cette démo FixedJoint
+            boxSize: 0.5,      // Taille plus grande pour mieux voir
+            boxInitialY: 4.0,
+            boxMass: 1.0,
+            boxRestitution: 0.3, // Moins de rebond pour la stabilité
+            groundY: -2.0,
+            groundSizeX: 15.0,
+            groundSizeZ: 10.0,
+            groundRestitution: 0.5,
+            showRapierDebug: true, // Afficher le debug par défaut pour les joints
+            resetSimulation: function() { resetSimulation(); }
+        };
+
+        async function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xEEEEff);
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(4, simParams.boxInitialY + 2, 8); 
+            camera.lookAt(0, simParams.groundY + 1, 0);
+
+            const ambient = new THREE.HemisphereLight(0xffffff, 0x888888, 3.0);
+            scene.add(ambient);
+            const light = new THREE.DirectionalLight(0xfffefe, 3);
+            light.position.set(1, 4, 8);
+            light.castShadow = true;
+            scene.add(light);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target = new THREE.Vector3(0, simParams.groundY + 1, 0);
+
+
+            try {
+                const rapierModule = await import('https://cdn.skypack.dev/@dimforge/rapier3d-compat');
+                RAPIER = rapierModule.default;
+                await RAPIER.init();
+                console.log("Rapier.js 3D chargé et initialisé.");
+
+                setupDatGUI();
+                createPhysicsWorld_rapier();
+                createVisuals_three();
+                createDebugRenderer_three();
+                resetPhysicsState(); 
+
+                renderer.setAnimationLoop(animate);
+
+            } catch (e) {
+                console.error("Erreur lors du chargement ou de l'initialisation de Rapier.js:", e);
+                document.body.innerHTML = "Impossible de charger la simulation physique. Erreur : " + e.message;
+                return;
+            }
+
+            window.addEventListener('resize', onWindowResize, false);
+            displayInstructions();
+        }
+
+        function displayInstructions(){
+            console.log("--- Démo: Rapier.js - Fixed Joint (3D) ---");
+            console.log("Deux cubes dynamiques sont connectés par un FixedJoint et tombent comme un seul objet rigide.");
+            console.log("Utilisez les contrôles orbitaux de Three.js (clic gauche + glisser, clic droit + glisser, molette) pour naviguer.");
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createPhysicsWorld_rapier() {
+            if (!RAPIER) return;
+
+            if (world_rapier) {
+                world_rapier.free(); 
+            }
+
+            dynamicBodies_rapier = []; 
+            dynamicColliders_rapier = []; 
+
+            let gravity = { x: 0.0, y: simParams.gravityY, z: simParams.gravityZ };
+            world_rapier = new RAPIER.World(gravity);
+
+            let groundColliderDesc = RAPIER.ColliderDesc.cuboid(simParams.groundSizeX / 2, 0.1, simParams.groundSizeZ / 2)
+                .setTranslation(0.0, simParams.groundY - 0.1, 0.0) 
+                .setRestitution(simParams.groundRestitution);
+            groundCollider_rapier = world_rapier.createCollider(groundColliderDesc);
+
+            // --- DEBUT : Création des deux corps pour le FixedJoint ---
+            // Corps 1
+            let body1Desc = RAPIER.RigidBodyDesc.dynamic();
+            let body1 = world_rapier.createRigidBody(body1Desc);
+            let collider1Desc = RAPIER.ColliderDesc.cuboid(simParams.boxSize, simParams.boxSize, simParams.boxSize)
+                .setRestitution(simParams.boxRestitution)
+                .setMass(simParams.boxMass);
+            let collider1 = world_rapier.createCollider(collider1Desc, body1);
+            dynamicBodies_rapier.push(body1);
+            dynamicColliders_rapier.push(collider1);
+
+            // Corps 2
+            let body2Desc = RAPIER.RigidBodyDesc.dynamic();
+            let body2 = world_rapier.createRigidBody(body2Desc);
+            let collider2Desc = RAPIER.ColliderDesc.cuboid(simParams.boxSize, simParams.boxSize, simParams.boxSize)
+                .setRestitution(simParams.boxRestitution)
+                .setMass(simParams.boxMass);
+            let collider2 = world_rapier.createCollider(collider2Desc, body2);
+            dynamicBodies_rapier.push(body2);
+            dynamicColliders_rapier.push(collider2);
+
+            // Création du Fixed Joint
+            // Les ancres sont définies localement par rapport au centre de chaque corps.
+            // Pour les "souder" par les faces, on met l'ancre1 à +boxSize en X pour body1, et l'ancre2 à -boxSize en X pour body2.
+            let localAnchor1 = { x: simParams.boxSize, y: 0.0, z: 0.0 }; // Face droite de body1
+            let localAnchor2 = { x: -simParams.boxSize, y: 0.0, z: 0.0 }; // Face gauche de body2
+
+            // Les frames locales définissent l'orientation relative. Pour un fixed joint simple, utiliser des identités.
+            let localFrame1 = { x: 0.0, y: 0.0, z: 0.0, w: 1.0 }; // Quaternion identité
+            let localFrame2 = { x: 0.0, y: 0.0, z: 0.0, w: 1.0 }; // Quaternion identité
+
+            let fixedJoint = RAPIER.JointData.fixed(
+                localAnchor1, localFrame1, 
+                localAnchor2, localFrame2
+            );
+
+            // On crée le joint entre body1 et body2. Le 'true' final indique d'ignorer les collisions entre leurs colliders.
+            world_rapier.createImpulseJoint(fixedJoint, body1, body2, true);
+            // --- FIN : Création des deux corps pour le FixedJoint ---
+        }
+
+        function resetPhysicsState() {
+            if (!dynamicBodies_rapier || dynamicBodies_rapier.length < 2) return; // S'assurer que les deux corps existent
+
+            const body1 = dynamicBodies_rapier[0];
+            const body2 = dynamicBodies_rapier[1];
+
+            // Positionnement des deux corps initiaux pour qu'ils soient côte à côte et liés par le joint
+            // Si boxSize est 0.5 (demi-taille), la taille complète est 1.0.
+            // Body1 au centre (0, Y, 0)
+            // Body2 à droite de body1, son centre sera à 1.0 (2 * boxSize) de body1
+            const initialY = simParams.boxInitialY;
+            const separationX = simParams.boxSize * 2; // Distance entre les centres pour que les faces se touchent
+
+            body1.setTranslation({ x: -separationX / 2, y: initialY, z: 0.0 }, true);
+            body2.setTranslation({ x: separationX / 2, y: initialY, z: 0.0 }, true);
+
+            // Réinitialiser les vélocités et réveiller les corps
+            body1.setLinvel({ x: 0.0, y: 0.0, z: 0.0 }, true);
+            body1.setAngvel({ x: 0.0, y: 0.0, z: 0.0 }, true);
+            body1.wakeUp();
+
+            body2.setLinvel({ x: 0.0, y: 0.0, z: 0.0 }, true);
+            body2.setAngvel({ x: 0.0, y: 0.0, z: 0.0 }, true);
+            body2.wakeUp();
+
+            // Mise à jour de la restitution et de la masse pour les colliders
+            dynamicColliders_rapier.forEach(collider => {
+                collider.setRestitution(simParams.boxRestitution);
+                collider.setMass(simParams.boxMass); 
+            });
+            
+            if (groundCollider_rapier) {
+                groundCollider_rapier.setRestitution(simParams.groundRestitution);
+            }
+            if (world_rapier) { 
+                world_rapier.gravity.y = simParams.gravityY;
+                world_rapier.gravity.z = simParams.gravityZ;
+            }
+
+            // Mettre à jour immédiatement les maillages Three.js
+            dynamicMeshes_three.forEach((mesh, i) => {
+                if (dynamicBodies_rapier[i]) {
+                    const initialPosRapier = dynamicBodies_rapier[i].translation();
+                    const initialRotRapier = dynamicBodies_rapier[i].rotation(); 
+                    mesh.position.set(initialPosRapier.x, initialPosRapier.y, initialPosRapier.z);
+                    mesh.quaternion.set(initialRotRapier.x, initialRotRapier.y, initialRotRapier.z, initialRotRapier.w);
+                }
+            });
+
+            if (debugLines_three) {
+                const positions = debugLines_three.geometry.attributes.position.array;
+                for (let i = 0; i < positions.length; i++) positions[i] = 0;
+                debugLines_three.geometry.setDrawRange(0, 0);
+                debugLines_three.geometry.attributes.position.needsUpdate = true;
+            }
+        }
+
+        function createVisuals_three() {
+            dynamicMeshes_three.forEach(mesh => scene.remove(mesh));
+            dynamicMeshes_three = [];
+
+            if (groundMesh_three) scene.remove(groundMesh_three);
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x99577aa, metalness:0.2, roughness:0.8 });
+            const floorGeometry = new THREE.PlaneGeometry(simParams.groundSizeX, simParams.groundSizeZ); 
+            groundMesh_three = new THREE.Mesh(floorGeometry, floorMaterial);
+            groundMesh_three.rotation.x = -Math.PI / 2; 
+            groundMesh_three.position.y = simParams.groundY;
+            groundMesh_three.receiveShadow = true;
+            scene.add(groundMesh_three);
+
+            // --- DEBUT : Création des deux meshes pour le FixedJoint ---
+            const geom = new THREE.BoxGeometry(simParams.boxSize * 2, simParams.boxSize * 2, simParams.boxSize * 2);
+
+            // Mesh 1 (bleue)
+            const mat1 = new THREE.MeshStandardMaterial({ color: 0x0000ff, metalness:0.4, roughness:0.6 });
+            const mesh1 = new THREE.Mesh(geom, mat1);
+            mesh1.castShadow = true;
+            scene.add(mesh1);
+            dynamicMeshes_three.push(mesh1);
+
+            // Mesh 2 (rouge)
+            const mat2 = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness:0.4, roughness:0.6 });
+            const mesh2 = new THREE.Mesh(geom, mat2);
+            mesh2.castShadow = true;
+            scene.add(mesh2);
+            dynamicMeshes_three.push(mesh2);
+            // --- FIN : Création des deux meshes pour le FixedJoint ---
+        }
+
+        function createDebugRenderer_three() {
+            if (debugLines_three) {
+                scene.remove(debugLines_three);
+                debugLines_three.geometry.dispose();
+                debugLines_three.material.dispose();
+            }
+
+            const material = new THREE.LineBasicMaterial({
+                color: 0xffffff,
+                vertexColors: true
+            });
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(MAX_DEBUG_VERTICES * 3);
+            const colors = new Float32Array(MAX_DEBUG_VERTICES * 3); 
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3).setUsage(THREE.DynamicDrawUsage));
+
+            debugLines_three = new THREE.LineSegments(geometry, material);
+            debugLines_three.frustumCulled = false; 
+            scene.add(debugLines_three);
+        }
+
+        function updateDebugRenderer_three() {
+             if (!world_rapier || !debugLines_three || !simParams.showRapierDebug) {
+                if (debugLines_three) debugLines_three.visible = false;
+                return;
+            }
+            debugLines_three.visible = true;
+
+            const buffers = world_rapier.debugRender(); 
+            const vertices = buffers.vertices;
+            const colorsRapier = buffers.colors; 
+
+            const positionsAttribute = debugLines_three.geometry.attributes.position;
+            const colorsAttribute = debugLines_three.geometry.attributes.color;
+
+            let vertexCount = Math.min(MAX_DEBUG_VERTICES, vertices.length / 3); 
+
+            for (let i = 0; i < vertexCount; i++) {
+                positionsAttribute.setXYZ(i, vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
+                colorsAttribute.setXYZ(i, colorsRapier[i * 4], colorsRapier[i * 4 + 1], colorsRapier[i * 4 + 2]);
+            }
+
+            positionsAttribute.needsUpdate = true;
+            colorsAttribute.needsUpdate = true;
+            debugLines_three.geometry.setDrawRange(0, vertexCount);
+        }
+
+
+        function resetSimulation() {
+            createPhysicsWorld_rapier();
+            createVisuals_three();
+            if (!debugLines_three && RAPIER) createDebugRenderer_three(); 
+            resetPhysicsState();
+            clock.start();
+            console.log("Simulation réinitialisée : Démo Fixed Joint.");
+        }
+
+
+        function animate() {
+            if (world_rapier) {
+                world_rapier.step();
+                
+                // Mettre à jour les mesh Three.js avec les positions et rotations des corps Rapier
+                dynamicBodies_rapier.forEach((body, i) => {
+                    if (body && dynamicMeshes_three[i]) {
+                        let position_rapier = body.translation(); 
+                        let rotation_rapier = body.rotation();   
+
+                        dynamicMeshes_three[i].position.set(position_rapier.x, position_rapier.y, position_rapier.z);
+                        dynamicMeshes_three[i].quaternion.set(rotation_rapier.x, rotation_rapier.y, rotation_rapier.z, rotation_rapier.w);
+                    }
+                });
+
+                updateDebugRenderer_three();
+            }
+
+            controls.update(); 
+            renderer.render(scene, camera); 
+        }
+
+        function setupDatGUI() {
+            const gui = new dat.GUI();
+            gui.add(simParams, 'resetSimulation').name("Réinitialiser Simulation");
+            gui.add(simParams, 'timeScale', 0.1, 2.0, 0.05).name('Échelle de Temps (Visuel)'); 
+            gui.add(simParams, 'showRapierDebug').name("Afficher Debug Rapier").onChange(updateDebugRenderer_three); 
+
+            const physicsFolder = gui.addFolder('Physique Rapier');
+            physicsFolder.add(simParams, 'gravityY', -20.0, 0.0, 0.1).name('Gravité Y').onChange(resetSimulation);
+            physicsFolder.add(simParams, 'gravityZ', -10.0, 10.0, 0.1).name('Gravité Z').onChange(resetSimulation); 
+            physicsFolder.add(simParams, 'boxMass', 0.1, 5.0, 0.1).name('Masse Objet').onChange(resetSimulation);
+            physicsFolder.add(simParams, 'boxRestitution', 0.0, 1.0, 0.01).name('Restitution Objet').onChange(resetSimulation);
+            physicsFolder.add(simParams, 'groundRestitution', 0.0, 1.0, 0.01).name('Restitution Sol').onChange(resetSimulation);
+            physicsFolder.open();
+
+            const sceneSetupFolder = gui.addFolder('Configuration Scène');
+            // numDynamicObjects n'est plus pertinent pour cette démo spécifique, on le retire du GUI
+            sceneSetupFolder.add(simParams, 'boxSize', 0.1, 1.0, 0.01).name('Taille Objet').onChange(resetSimulation);
+            sceneSetupFolder.add(simParams, 'boxInitialY', simParams.groundY + 0.2, 15.0, 0.1).name('Pos. Initiale Y').onChange(resetSimulation);
+            // boxSpacingX/Z ne sont plus utilisés pour positionner des objets multiples, on les retire du GUI
+            sceneSetupFolder.open();
+        }
+
+        init().catch(error => {
+            console.error("Erreur fatale lors de l'initialisation:", error);
+        });
+
+    </script>
+</body>
+</html>
