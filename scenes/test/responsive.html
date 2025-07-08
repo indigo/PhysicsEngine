@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Three.js Strategies</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #111;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas class="webgl"></canvas>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+
+        // --- Parameters Object ---
+        const params = {
+            strategy: 'Cover', // Default strategy
+        };
+
+        // --- Basic Setup ---
+        const canvas = document.querySelector('canvas.webgl');
+        const scene = new THREE.Scene();
+
+        // Let's add some objects to clearly see the effects
+        const geometry = new THREE.TorusKnotGeometry(1, 0.4, 128, 16);
+        const material = new THREE.MeshNormalMaterial();
+        const mainObject = new THREE.Mesh(geometry, material);
+        scene.add(mainObject);
+
+        // Add "boundary" objects to visualize cropping and stretching
+        const boundaryMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const boundaryGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+        const horizontalSphere = new THREE.Mesh(boundaryGeometry, boundaryMaterial);
+        horizontalSphere.position.x = 3.5;
+        const verticalSphere = new THREE.Mesh(boundaryGeometry, boundaryMaterial);
+        verticalSphere.position.y = 2;
+        scene.add(horizontalSphere, verticalSphere);
+
+        // --- Camera ---
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.z = 5;
+        scene.add(camera);
+
+        // --- Renderer ---
+        const renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: true
+        });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Good practice
+
+        // --- Controls ---
+        const controls = new OrbitControls(camera, canvas);
+        controls.enableDamping = true;
+
+        // --- The CORE: Resize Handler ---
+        const designResolution = { width: 1920, height: 1080 };
+        const designAspect = designResolution.width / designResolution.height;
+
+        const updateSize = () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const currentAspect = width / height;
+
+            // De-activate scissor/viewport for strategies that don't use it
+            renderer.setScissorTest(false);
+            renderer.setViewport(0, 0, width, height);
+            
+            // Re-position adaptive objects to a default state before applying logic
+            horizontalSphere.position.set(3.5, 0, 0);
+            verticalSphere.position.set(0, 2, 0);
+            mainObject.position.set(0, 0, 0);
+
+            switch (params.strategy) {
+                case 'Fill':
+                    // 1. Update Renderer Size
+                    renderer.setSize(width, height);
+                    // 2. Update Camera Aspect Ratio
+                    camera.aspect = currentAspect;
+                    camera.fov = 75; // Reset FOV to default
+                    camera.updateProjectionMatrix();
+                    break;
+
+                case 'Contain':
+                    camera.aspect = designAspect; // Camera aspect is always the design's
+                    camera.fov = 75; // Reset FOV to default
+
+                    if (currentAspect > designAspect) {
+                        // Window is wider than design (letterbox)
+                        const newHeight = height;
+                        const newWidth = newHeight * designAspect;
+                        const xOffset = (width - newWidth) / 2;
+                        renderer.setSize(width, height);
+                        renderer.setScissor(xOffset, 0, newWidth, newHeight);
+                        renderer.setViewport(xOffset, 0, newWidth, newHeight);
+                        renderer.setScissorTest(true);
+                    } else {
+                        // Window is taller than design (pillarbox)
+                        const newWidth = width;
+                        const newHeight = newWidth / designAspect;
+                        const yOffset = (height - newHeight) / 2;
+                        renderer.setSize(width, height);
+                        renderer.setScissor(0, yOffset, newWidth, newHeight);
+                        renderer.setViewport(0, yOffset, newWidth, newHeight);
+                        renderer.setScissorTest(true);
+                    }
+                    camera.updateProjectionMatrix();
+                    break;
+
+                case 'Cover':
+                    renderer.setSize(width, height);
+                    camera.aspect = currentAspect;
+                    
+                    // This is the magic part for 'Cover'
+                    // We adjust the FOV to ensure the scene content covers the viewport
+                    const initialFov = 75; // The FOV used for the design aspect ratio
+                    const radFov = initialFov * (Math.PI / 180);
+
+                    if (currentAspect > designAspect) {
+                        // Window is wider: we need to increase vertical FOV
+                        // The default camera setup in Three.js uses vertical FOV
+                        // So we do nothing, the horizontal view expands naturally.
+                        camera.fov = initialFov;
+                    } else {
+                        // Window is taller: we need to increase horizontal FOV, which
+                        // means calculating a new vertical FOV to make it fit.
+                        const vFov = 2 * Math.atan(Math.tan(radFov / 2) * (designAspect / currentAspect));
+                        camera.fov = vFov * (180 / Math.PI);
+                    }
+                    camera.updateProjectionMatrix();
+                    break;
+
+                case 'Adaptive':
+                    renderer.setSize(width, height);
+                    camera.aspect = currentAspect;
+                    camera.fov = 75; // Reset FOV to default
+
+                    // Simple "breakpoint" logic based on aspect ratio
+                    if (currentAspect > 1) { // Landscape
+                        mainObject.position.x = -1.5;
+                        horizontalSphere.position.set(1.5, 0, 0);
+                        verticalSphere.position.set(1.5, 1.5, 0); // Move out of the way
+                    } else { // Portrait
+                        mainObject.position.y = -1.5;
+                        verticalSphere.position.set(0, 1.5, 0);
+                        horizontalSphere.position.set(1.5, 0, 0); // Move out of the way
+                    }
+                    camera.updateProjectionMatrix();
+                    break;
+            }
+        };
+
+        // --- GUI ---
+        const gui = new GUI();
+        gui.add(params, 'strategy', ['Fill', 'Contain', 'Cover', 'Adaptive'])
+           .name('Responsive Strategy')
+           .onChange(updateSize); // Call updateSize whenever the dropdown changes
+
+        // --- Animation Loop ---
+        const tick = () => {
+            controls.update();
+            renderer.render(scene, camera);
+            window.requestAnimationFrame(tick);
+        };
+
+        // --- Initial Call and Event Listener ---
+        window.addEventListener('resize', updateSize);
+        updateSize(); // Initial call to set size on load
+        tick();
+
+    </script>
+</body>
+</html>

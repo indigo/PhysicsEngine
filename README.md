@@ -100,7 +100,7 @@ Appliquer des notions de mécanique classique et des méthodes numériques pour 
 
 ---
 
-**Session 7: Systèmes de Particules et Introduction aux Moteurs Physiques (Rapier) (4 blocs)**
+**Session 7: Introduction aux Moteurs Physiques (Rapier) (4 blocs)**
 
 *   **Objectif :** Introduire une nouvelle technique de simulation (systèmes de particules) pour des effets spécifiques, puis présenter formellement un moteur physique (Rapier) comme solution pour gérer des scénarios de corps rigides complexes.
 *   **Bloc 1 : Systèmes de Particules - Théorie et Applications (1h30)**

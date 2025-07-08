@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+        <title>Physics Blaster - Modular (Correct Import Map)</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+		<style>
+            body { margin: 0; font-family: sans-serif; overflow: hidden; }
+            #info, #instructions { position: absolute; top: 10px; padding: 10px; background-color: rgba(0,0,0,0.5); color: white; border-radius: 5px; font-size: 14px; }
+            #info { left: 50%; transform: translateX(-50%); }
+            #instructions { left: 10px; max-width: 300px; }
+            #power-bar-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 200px; height: 20px; background-color: rgba(0, 0, 0, 0.5); border: 2px solid white; border-radius: 5px; display: none; }
+            #power-bar-fill { width: 0%; height: 100%; background-color: #4caf50; transition: width 0.05s linear; }
+		</style>
+	</head>
+	<body>
+        <div id="info">Physics Blaster</div>
+        <div id="instructions">
+             <p><strong>Contrôles:</strong></p>
+             <ul><li>1er Clic: Bloquer Angle H</li><li>2e Clic: Bloquer Angle V</li><li>3e Clic: Bloquer Puissance & TIRER</li></ul>
+             <p id="status">Chargement...</p>
+        </div>
+        <div id="power-bar-container"><div id="power-bar-fill"></div></div>
+
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+					"three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                    "@dimforge/rapier3d-compat": "https://cdn.skypack.dev/@dimforge/rapier3d-compat",
+                    "lil-gui": "https://unpkg.com/lil-gui@0.19.1/dist/lil-gui.esm.js"
+				}
+			}
+		</script>
+
+		<script type="module">
+			import * as THREE from 'three';
+            import RAPIER from '@dimforge/rapier3d-compat';
+            // Les chemins relatifs sont maintenant résolus normalement par le navigateur
+            import { setupWorld } from './physics-world-setup.js';
+            import { initUI, setupDebugGUI } from './ui-manager.js';
+            import { initPlayerControls, updateAiming } from './player-controls.js';
+            import * as Game from './game-logic.js';
+
+            window.addEventListener('DOMContentLoaded', async () => {
+                await RAPIER.init({});
+
+                // --- Initialisation des Systèmes ---
+                const { scene, camera, renderer, world } = setupWorld();
+                const clock = new THREE.Clock();
+                const physicsObjects = [], targetObjects = [];
+                const settings = { hSpeed: 2.0, vSpeed: 3.0, powerSpeed: 50.0, maxAngleV: 45.0, maxPower: 100.0 };
+
+                initUI();
+                setupDebugGUI(settings);
+                
+                initPlayerControls(scene, renderer, (angleH, angleV, power) => {
+                    Game.fireCurrentProjectile(angleH, angleV, power, {
+                        scene, world, physicsObjects
+                    });
+                });
+                
+                Game.loadLevel(scene, world, physicsObjects, targetObjects);
+
+                window.addEventListener('keydown', (e) => {
+                    if (e.key.toLowerCase() === 'r') Game.resetLevel(scene, world, physicsObjects, targetObjects);
+                    if (e.key.toLowerCase() === 'n') Game.nextLevel(scene, world, physicsObjects, targetObjects);
+                });
+
+                // --- Boucle de Jeu Principale ---
+                renderer.setAnimationLoop(() => {
+                    const deltaTime = clock.getDelta();
+                    const currentProjectile = Game.getCurrentProjectile();
+                    
+                    updateAiming(deltaTime, clock, currentProjectile, settings);
+                    
+                    world.step();
+
+                    // Synchronisation des objets
+                    physicsObjects.forEach(p => {
+                        if (p.body && p.body.isDynamic()) {
+                            p.mesh.position.copy(p.body.translation());
+                            p.mesh.quaternion.copy(p.body.rotation());
+                        }
+                    });
+
+                    if (!currentProjectile) {
+                        Game.checkGameState(physicsObjects, targetObjects);
+                    }
+                    
+                    renderer.render(scene, camera);
+                });
+            });
+		</script>
+	</body>
+</html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Three.js + HTML UI</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #111;
+            color: white;
+        }
+
+        /* The 3D canvas is the background */
+        .webgl {
+            position: fixed; /* Use fixed to keep it in place even on scroll */
+            top: 0;
+            left: 0;
+            outline: none; /* remove blue outline on click */
+        }
+
+        /* --- UI Styling --- */
+        /* This container holds all our UI panels */
+        .ui-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            /* Prevents the container from catching mouse events,
+               so we can still interact with the 3D scene. */
+            pointer-events: none; 
+            
+            /* Use flexbox for easy alignment */
+            display: flex;
+            justify-content: space-between;
+            flex-direction: column;
+        }
+
+        /* Make child elements of UI panels clickable again */
+        .ui-panel {
+            pointer-events: all;
+        }
+
+        .top-panel {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        .side-panel {
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            border-radius: 0 10px 10px 0;
+            width: 280px;
+        }
+
+        .bottom-panel {
+            padding: 10px;
+            text-align: center;
+        }
+
+        h1, p {
+            margin: 0 0 15px 0;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* --- CSS Media Queries for Responsiveness --- */
+        
+        /* By default, we have a side panel layout (for desktop) */
+        .desktop-ui { display: block; }
+        .mobile-ui { display: none; }
+        
+        /* On screens smaller than 768px (tablets/mobiles) */
+        @media (max-width: 768px) {
+            .desktop-ui { display: none; }
+            .mobile-ui { display: block; }
+
+            .ui-container {
+                /* We don't need justify-content on mobile */
+                justify-content: initial;
+            }
+
+            .bottom-panel {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(5px);
+                border-top: 1px solid #444;
+                padding: 15px;
+                box-sizing: border-box; /* Include padding in the width */
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- The 3D Canvas -->
+    <canvas class="webgl"></canvas>
+
+    <!-- The HTML UI Overlay -->
+    <div class="ui-container">
+        <!-- Panel 1: Top Bar (visible on all) -->
+        <div class="top-panel ui-panel">
+            <div class="title">My 3D Experience</div>
+            <!-- The lil-gui element will be placed here by our script -->
+            <div class="gui-container"></div>
+        </div>
+
+        <!-- Panel 2: Side Bar (for desktop) -->
+        <div class="side-panel ui-panel desktop-ui">
+            <h1>Info Panel</h1>
+            <p>This panel is visible on larger screens. The 3D scene uses the 'Cover' strategy to fill the background.</p>
+            <button id="color-button">Change Color</button>
+        </div>
+
+        <!-- Panel 3: Bottom Bar (for mobile) -->
+        <div class="bottom-panel ui-panel mobile-ui">
+            <button id="color-button-mobile">Change Color</button>
+        </div>
+    </div>
+
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+
+        // --- Parameters Object ---
+        const params = {
+            strategy: 'Cover', // Default to the most common 'Cover' strategy
+            objectColor: 0xffffff,
+        };
+
+        // --- Basic Setup ---
+        const canvas = document.querySelector('canvas.webgl');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color('#111'); // Match body background
+
+        // --- Objects ---
+        const geometry = new THREE.TorusKnotGeometry(1, 0.4, 128, 16);
+        const material = new THREE.MeshStandardMaterial({ 
+            color: params.objectColor,
+            metalness: 0.8,
+            roughness: 0.2
+        });
+        const mainObject = new THREE.Mesh(geometry, material);
+        scene.add(mainObject);
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        const pointLight = new THREE.PointLight(0xffffff, 1);
+        pointLight.position.set(5, 5, 5);
+        scene.add(ambientLight, pointLight);
+
+        // --- Camera ---
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.z = 5;
+        scene.add(camera);
+
+        // --- Renderer ---
+        const renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: true
+        });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // --- Controls ---
+        const controls = new OrbitControls(camera, canvas);
+        controls.enableDamping = true;
+
+        // --- Resize Handler (from previous example, simplified to 'Cover') ---
+        const updateSize = () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            // Update renderer and camera
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+
+            // 'Cover' strategy logic
+            const designAspect = 16 / 9;
+            const initialFov = 75;
+            const radFov = initialFov * (Math.PI / 180);
+            if (camera.aspect > designAspect) {
+                camera.fov = initialFov;
+            } else {
+                const vFov = 2 * Math.atan(Math.tan(radFov / 2) * (designAspect / camera.aspect));
+                camera.fov = vFov * (180 / Math.PI);
+            }
+            camera.updateProjectionMatrix();
+        };
+
+        // --- GUI ---
+        const gui = new GUI({ container: document.querySelector('.gui-container') });
+        // NOTE: We hide the strategy dropdown now, as 'Cover' is usually what you stick with
+        // when you have a UI overlay. But you can re-enable it for testing!
+        // gui.add(params, 'strategy', ['Fill', 'Contain', 'Cover', 'Adaptive']).name('Responsive Strategy').onChange(updateSize);
+        gui.addColor(params, 'objectColor').name('Object Color').onChange(() => {
+            material.color.set(params.objectColor);
+        });
+
+        // --- HTML UI Interaction ---
+        const changeColor = () => {
+            // Change the color to a random one
+            const randomColor = Math.random() * 0xffffff;
+            material.color.set(randomColor);
+            // Update the GUI color picker to reflect the change
+            params.objectColor = randomColor;
+            gui.controllers.forEach(c => c.updateDisplay());
+        };
+        
+        document.getElementById('color-button').addEventListener('click', changeColor);
+        document.getElementById('color-button-mobile').addEventListener('click', changeColor);
+
+        // --- Animation Loop ---
+        const clock = new THREE.Clock();
+        const tick = () => {
+            const elapsedTime = clock.getElapsedTime();
+            mainObject.rotation.y = elapsedTime * 0.2;
+            mainObject.rotation.x = elapsedTime * 0.1;
+            
+            controls.update();
+            renderer.render(scene, camera);
+            window.requestAnimationFrame(tick);
+        };
+
+        // --- Initial Call and Event Listener ---
+        window.addEventListener('resize', updateSize);
+        updateSize();
+        tick();
+    </script>
+</body>
+</html>

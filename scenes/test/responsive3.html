@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive & Scalable Three.js UI</title>
+    <style>
+        /* Base font-size is set here, but will be overridden by JS.
+           10px is used for easy rem calculation (1.6rem = 16px). */
+        html {
+            font-size: 16px;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: rgba(60, 155, 53, 0.85);
+            color: rgba(220, 68, 68, 0.582);
+            /* Font size is now inherited from html, so it will be dynamic */
+            font-size: 1.6rem; 
+        }
+
+        .webgl {
+            position: fixed;
+            top: 0;
+            left: 0;
+            outline: 1px solid rgb(255, 0, 64);
+        }
+
+        /* --- UI Styling with REM units --- */
+        .ui-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none; 
+            display: flex;
+            justify-content: space-between;
+            flex-direction: column;
+        }
+
+        .ui-panel {
+            pointer-events: all;
+        }
+
+        .top-panel {
+            display: flex;
+            justify-content: space-between;
+            padding: 2rem; /* 20px */
+            font-size: 1.8rem; /* 18px */
+            font-weight: bold;
+        }
+
+        .side-panel {
+            padding: 2rem; /* 20px */
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(0.5rem); /* 5px */
+            border-radius: 0 1rem 1rem 0; /* 10px */
+            width: 28rem; /* 280px */
+        }
+
+        h1 {
+            font-size: 2.4rem; /* 24px */
+            margin: 0 0 1.5rem 0; /* 15px */
+        }
+
+        p {
+            font-size: 1.6rem; /* 16px */
+            line-height: 1.5;
+            margin: 0 0 1.5rem 0;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 1rem 1.5rem; /* 10px 15px */
+            border-radius: 0.5rem; /* 5px */
+            cursor: pointer;
+            font-size: 1.6rem; /* 16px */
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        /* --- Media Queries still handle LAYOUT changes --- */
+        .desktop-ui { display: block; }
+        .mobile-ui { display: none; }
+        
+        @media (max-width: 768px) {
+            .desktop-ui { display: none; }
+            .mobile-ui { display: block; }
+
+            .ui-container {
+                justify-content: initial;
+            }
+
+            .bottom-panel {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(0.5rem);
+                border-top: 0.1rem solid #444;
+                padding: 1.5rem; /* 15px */
+                box-sizing: border-box;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas class="webgl"></canvas>
+    <div class="ui-container">
+        <div class="top-panel ui-panel">
+            <div class="title">My 3D Experience</div>
+            <div class="gui-container"></div>
+        </div>
+        <div class="side-panel ui-panel desktop-ui">
+            <h1>Info Panel</h1>
+            <p>This UI now scales with resolution. Resize your window to see it in action. Use the slider to adjust the scale manually.</p>
+            <button id="color-button">Change Color</button>
+        </div>
+        <div class="bottom-panel ui-panel mobile-ui">
+            <button id="color-button-mobile">Change Color</button>
+        </div>
+    </div>
+
+    <script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }</script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+
+        // --- Parameters Object ---
+        const params = {
+            objectColor: 0xffffff,
+            uiScale: 1.0 // Add a parameter for our slider
+        };
+
+        // --- UI SCALING LOGIC ---
+        const referenceWidth = 1920; // The resolution the UI was designed for
+        const baseFontSize = 10; // The base font-size in 'px' we set in CSS
+
+        const updateUIScale = () => {
+            const screenWidth = window.innerWidth;
+            const newFontSize = (screenWidth / referenceWidth) * baseFontSize * params.uiScale;
+            
+            // Apply the new font size to the root element
+            document.documentElement.style.fontSize = `${newFontSize}px`;
+        };
+
+        // --- Basic 3D Setup ---
+        const canvas = document.querySelector('canvas.webgl');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color('#111');
+        const material = new THREE.MeshStandardMaterial({ color: params.objectColor, metalness: 0.8, roughness: 0.2 });
+        const mainObject = new THREE.Mesh(new THREE.TorusKnotGeometry(1, 0.4, 128, 16), material);
+        scene.add(mainObject);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        const pointLight = new THREE.PointLight(0xffffff, 1);
+        pointLight.position.set(5, 5, 5);
+        scene.add(ambientLight, pointLight);
+        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100);
+        camera.position.z = 5;
+        scene.add(camera);
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        const controls = new OrbitControls(camera, canvas);
+        controls.enableDamping = true;
+
+        // --- THE MAIN RESIZE HANDLER ---
+        const onWindowResize = () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            // 1. Update UI Scale
+            updateUIScale();
+
+            // 2. Update 3D Scene (Renderer and Camera)
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+
+            // 'Cover' strategy logic for camera
+            const designAspect = 16 / 9;
+            const initialFov = 75;
+            const radFov = initialFov * (Math.PI / 180);
+            if (camera.aspect > designAspect) {
+                camera.fov = initialFov;
+            } else {
+                const vFov = 2 * Math.atan(Math.tan(radFov / 2) * (designAspect / camera.aspect));
+                camera.fov = vFov * (180 / Math.PI);
+            }
+            camera.updateProjectionMatrix();
+        };
+
+        // --- GUI ---
+        const gui = new GUI({ container: document.querySelector('.gui-container') });
+        gui.addColor(params, 'objectColor').name('Object Color').onChange(() => {
+            material.color.set(params.objectColor);
+        });
+        gui.add(params, 'uiScale', 0.5, 2.0, 0.01)
+           .name('UI Scale')
+           .onChange(updateUIScale); // Hook up the slider to our function
+
+        // --- HTML UI Interaction ---
+        const changeColor = () => {
+            const randomColor = Math.random() * 0xffffff;
+            material.color.set(randomColor);
+            params.objectColor = randomColor;
+            gui.controllers.forEach(c => c.updateDisplay());
+        };
+        document.getElementById('color-button').addEventListener('click', changeColor);
+        document.getElementById('color-button-mobile').addEventListener('click', changeColor);
+
+        // --- Animation Loop ---
+        const clock = new THREE.Clock();
+        const tick = () => {
+            const elapsedTime = clock.getElapsedTime();
+            mainObject.rotation.y = elapsedTime * 0.2;
+            mainObject.rotation.x = elapsedTime * 0.1;
+            controls.update();
+            renderer.render(scene, camera);
+            window.requestAnimationFrame(tick);
+        };
+
+        // --- Initial Call and Event Listener ---
+        window.addEventListener('resize', onWindowResize);
+        onWindowResize(); // Initial call
+        tick();
+    </script>
+</body>
+</html>

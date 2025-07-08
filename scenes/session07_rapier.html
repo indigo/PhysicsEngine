@@ -157,20 +157,20 @@
             // Création du Fixed Joint
             // Les ancres sont définies localement par rapport au centre de chaque corps.
             // Pour les "souder" par les faces, on met l'ancre1 à +boxSize en X pour body1, et l'ancre2 à -boxSize en X pour body2.
-            let localAnchor1 = { x: simParams.boxSize, y: 0.0, z: 0.0 }; // Face droite de body1
-            let localAnchor2 = { x: -simParams.boxSize, y: 0.0, z: 0.0 }; // Face gauche de body2
+            let localAnchor1 = { x: simParams.boxSize * 2, y: 0.0, z: 0.0 }; // Face droite de body1
+            let localAnchor2 = { x: -simParams.boxSize * 2, y: 0.0, z: 0.0 }; // Face gauche de body2
 
             // Les frames locales définissent l'orientation relative. Pour un fixed joint simple, utiliser des identités.
             let localFrame1 = { x: 0.0, y: 0.0, z: 0.0, w: 1.0 }; // Quaternion identité
             let localFrame2 = { x: 0.0, y: 0.0, z: 0.0, w: 1.0 }; // Quaternion identité
 
-            let fixedJoint = RAPIER.JointData.fixed(
+            let param = RAPIER.JointData.fixed(
                 localAnchor1, localFrame1, 
                 localAnchor2, localFrame2
             );
 
             // On crée le joint entre body1 et body2. Le 'true' final indique d'ignorer les collisions entre leurs colliders.
-            world_rapier.createImpulseJoint(fixedJoint, body1, body2, true);
+            world_rapier.createImpulseJoint(param, body1, body2, false);
             // --- FIN : Création des deux corps pour le FixedJoint ---
         }
 
@@ -185,7 +185,7 @@
             // Body1 au centre (0, Y, 0)
             // Body2 à droite de body1, son centre sera à 1.0 (2 * boxSize) de body1
             const initialY = simParams.boxInitialY;
-            const separationX = simParams.boxSize * 2; // Distance entre les centres pour que les faces se touchent
+            const separationX = simParams.boxSize * 1; // Distance entre les centres pour que les faces se touchent
 
             body1.setTranslation({ x: -separationX / 2, y: initialY, z: 0.0 }, true);
             body2.setTranslation({ x: separationX / 2, y: initialY, z: 0.0 }, true);
