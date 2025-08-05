@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Jelly Cube</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+    </style>
+</head>
+<body>
+    <script type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+        import { GUI } from 'https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.module.js';
+
+
+const gravity = new THREE.Vector3(0, -9.81, 0);
+let stiffness = 200;
+let damping = 0.01;
+const subSteps = 5;
+
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.z = 8;
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5, 5, 5);
+scene.add(light);
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+
+class Particle {
+    constructor(position) {
+        this.position = position.clone();
+        this.oldPosition = position.clone();
+        this.acceleration = new THREE.Vector3();
+        this.mass = 1;
+
+        const geometry = new THREE.SphereGeometry(0.1, 8, 8);
+        const colorAleatorio = new THREE.Color(Math.random(), Math.random(), Math.random());
+        const material = new THREE.MeshStandardMaterial({ color: colorAleatorio });
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.position.copy(this.position);
+        scene.add(this.mesh);
+    }
+
+    applyForce(force) {
+        this.acceleration.add(force.clone().divideScalar(this.mass));
+    }
+
+    integrate(dt) {
+        const velocity = this.position.clone().sub(this.oldPosition).multiplyScalar(1 - damping);
+        const newPosition = this.position.clone().add(velocity).add(this.acceleration.clone().multiplyScalar(dt * dt));
+
+        this.oldPosition.copy(this.position);
+        this.position.copy(newPosition);
+        this.acceleration.set(0, 0, 0);
+
+        this.mesh.position.copy(this.position);
+    }
+}
+
+
+class Spring {
+    constructor(particleA, particleB, restLength) {
+        this.particleA = particleA;
+        this.particleB = particleB;
+        this.restLength = restLength;
+    }
+
+    applyForce() {
+        const delta = this.particleB.position.clone().sub(this.particleA.position);
+        const distance = delta.length();
+        const difference = (distance - this.restLength) / distance;
+        const force = delta.multiplyScalar(stiffness * difference);
+
+        this.particleA.applyForce(force);
+        this.particleB.applyForce(force.multiplyScalar(-1));
+    }
+}
+
+
+const particles = [];
+const springs = [];
+const gridSize = 4;
+const spacing = 0.5;
+
+for (let x = 0; x < gridSize; x++) {
+    for (let y = 0; y < gridSize; y++) {
+        for (let z = 0; z < gridSize; z++) {
+            const pos = new THREE.Vector3(x * spacing, y * spacing + 3, z * spacing);
+            particles.push(new Particle(pos));
+        }
+    }
+}
+
+function index(x, y, z) {
+    return x * gridSize * gridSize + y * gridSize + z;
+}
+
+for (let x = 0; x < gridSize; x++) {
+    for (let y = 0; y < gridSize; y++) {
+        for (let z = 0; z < gridSize; z++) {
+            const p = particles[index(x, y, z)];
+
+            if (x < gridSize - 1)
+                springs.push(new Spring(p, particles[index(x + 1, y, z)], spacing));
+
+            if (y < gridSize - 1)
+                springs.push(new Spring(p, particles[index(x, y + 1, z)], spacing));
+
+            if (z < gridSize - 1)
+                springs.push(new Spring(p, particles[index(x, y, z + 1)], spacing));
+        }
+    }
+}
+
+
+const gui = new GUI();
+gui.add({ stiffness: 200 }, 'stiffness', 50, 500).onChange(val => stiffness = val);
+gui.add({ damping: 0.01 }, 'damping', 0, 0.1).onChange(val => damping = val);
+
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    for (let step = 0; step < subSteps; step++) {
+        for (const p of particles) {
+            p.applyForce(gravity.clone().multiplyScalar(p.mass));
+        }
+
+        for (const s of springs) {
+            s.applyForce();
+        }
+
+        for (const p of particles) {
+            p.integrate(0.016 / subSteps);
+
+            if (p.position.y < -3) {
+                p.position.y = -3;
+            }
+        }
+    }
+
+    renderer.render(scene, camera);
+}
+
+animate();
+
+    </script>
+</body>
+</html>
